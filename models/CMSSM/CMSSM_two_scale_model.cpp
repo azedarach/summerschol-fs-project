@@ -226,10 +226,10 @@ void CLASSNAME::tadpole_equations(double tadpole[number_of_ewsb_equations]) cons
 
 /**
  * Method which calculates the tadpoles at loop order specified in the
- * pointer to the CLASSNAME::Ewsb_parameters struct.
+ * pointer to the CLASSNAME::EWSB_args struct.
  *
  * @param x GSL vector of EWSB output parameters
- * @param params pointer to CLASSNAME::Ewsb_parameters struct
+ * @param params pointer to CLASSNAME::EWSB_args struct
  * @param f GSL vector with tadpoles
  *
  * @return GSL_EDOM if x contains Nans, GSL_SUCCESS otherwise.
@@ -279,6 +279,7 @@ int CLASSNAME::solve_ewsb_iteratively()
 
    EWSB_solver* solvers[] = {
       new Fixed_point_iterator<number_of_ewsb_equations, fixed_point_iterator::Convergence_tester_relative>(CLASSNAME::ewsb_step, &params, number_of_ewsb_iterations, ewsb_iteration_precision),
+      new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_hybrid),
       new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_hybrids),
       new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_broyden)
    };

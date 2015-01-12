@@ -48,6 +48,7 @@
 
 namespace flexiblesusy {
 
+class EWSB_solver;
 class Two_scale;
 /**
  * @class CNMSSM<Two_scale>
@@ -639,7 +640,7 @@ public:
 
 
 private:
-   struct Ewsb_parameters {
+   struct EWSB_args {
       CNMSSM<Two_scale>* model;
       unsigned ewsb_loop_order;
    };
@@ -680,9 +681,12 @@ private:
 
    int solve_ewsb_iteratively();
    int solve_ewsb_iteratively(unsigned);
-   int solve_ewsb_iteratively_with(const gsl_multiroot_fsolver_type*, const double[number_of_ewsb_equations]);
+   int solve_ewsb_iteratively_with(EWSB_solver*, const double[number_of_ewsb_equations]);
    int solve_ewsb_tree_level_via_soft_higgs_masses();
    void ewsb_initial_guess(double[number_of_ewsb_equations]);
+   int ewsb_step(double[number_of_ewsb_equations]) const;
+   static int ewsb_step(const gsl_vector*, void*, gsl_vector*);
+   void tadpole_equations(double[number_of_ewsb_equations]) const;
    static int tadpole_equations(const gsl_vector*, void*, gsl_vector*);
    void copy_DRbar_masses_to_pole_masses();
 
