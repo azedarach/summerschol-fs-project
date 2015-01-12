@@ -33,6 +33,7 @@
 #include "logger.hpp"
 #include "error.hpp"
 #include "root_finder.hpp"
+#include "fixed_point_iterator.hpp"
 #include "gsl_utils.hpp"
 #include "config.h"
 #include "pv.hpp"
@@ -200,6 +201,30 @@ Problems<CMSSM_info::NUMBER_OF_PARTICLES>& CLASSNAME::get_problems()
 }
 
 /**
+ * Method which calculates the tadpoles at the current loop order.
+ *
+ * @param tadpole array of tadpole
+ */
+void CLASSNAME::tadpole_equations(double tadpole[number_of_ewsb_equations]) const
+{
+   tadpole[0] = get_ewsb_eq_hh_1();
+   tadpole[1] = get_ewsb_eq_hh_2();
+
+   if (ewsb_loop_order > 0) {
+      tadpole[0] -= Re(tadpole_hh(0));
+      tadpole[1] -= Re(tadpole_hh(1));
+
+      if (ewsb_loop_order > 1) {
+         double two_loop_tadpole[2];
+         tadpole_hh_2loop(two_loop_tadpole);
+         tadpole[0] -= two_loop_tadpole[0];
+         tadpole[1] -= two_loop_tadpole[1];
+
+      }
+   }
+}
+
+/**
  * Method which calculates the tadpoles at loop order specified in the
  * pointer to the CLASSNAME::Ewsb_parameters struct.
  *
@@ -217,49 +242,45 @@ int CLASSNAME::tadpole_equations(const gsl_vector* x, void* params, gsl_vector* 
       return GSL_EDOM;
    }
 
-   const CLASSNAME::Ewsb_parameters* ewsb_parameters
-      = static_cast<CLASSNAME::Ewsb_parameters*>(params);
-   CMSSM* model = ewsb_parameters->model;
-   const unsigned ewsb_loop_order = ewsb_parameters->ewsb_loop_order;
-
-   double tadpole[number_of_ewsb_equations];
+   const CLASSNAME::EWSB_args* ewsb_args
+      = static_cast<CLASSNAME::EWSB_args*>(params);
+   CMSSM* model = ewsb_args->model;
+   const unsigned ewsb_loop_order = ewsb_args->ewsb_loop_order;
 
    model->set_BMu(gsl_vector_get(x, 0));
    model->set_Mu(INPUT(SignMu) * Abs(gsl_vector_get(x, 1)));
 
-   tadpole[0] = model->get_ewsb_eq_hh_1();
-   tadpole[1] = model->get_ewsb_eq_hh_2();
 
-   if (ewsb_loop_order > 0) {
+   if (ewsb_loop_order > 0)
       model->calculate_DRbar_masses();
-      tadpole[0] -= Re(model->tadpole_hh(0));
-      tadpole[1] -= Re(model->tadpole_hh(1));
 
-      if (ewsb_loop_order > 1) {
-         double two_loop_tadpole[2];
-         model->tadpole_hh_2loop(two_loop_tadpole);
-         tadpole[0] -= two_loop_tadpole[0];
-         tadpole[1] -= two_loop_tadpole[1];
+   double tadpole[number_of_ewsb_equations] = { 0. };
 
-      }
-   }
+   model->tadpole_equations(tadpole);
 
    for (std::size_t i = 0; i < number_of_ewsb_equations; ++i)
       gsl_vector_set(f, i, tadpole[i]);
 
-   return GSL_SUCCESS;
+   bool is_finite = true;
+
+   for (std::size_t i = 0; i < number_of_ewsb_equations; ++i)
+      is_finite = is_finite && std::isfinite(tadpole[i]);
+
+   return (is_finite ? GSL_SUCCESS : GSL_EDOM);
 }
 
 /**
- * method which solves the EWSB conditions iteratively, trying GSL
- * root finding methods
- *       gsl_multiroot_fsolver_hybrid, gsl_multiroot_fsolver_hybrids, gsl_multiroot_fsolver_broyden
- * in that order until a solution is found.
+ * This method solves the EWSB conditions iteratively, trying several
+ * root finding methods until a solution is found.
  */
 int CLASSNAME::solve_ewsb_iteratively()
 {
-   const gsl_multiroot_fsolver_type* solvers[] = {
-      gsl_multiroot_fsolver_hybrid, gsl_multiroot_fsolver_hybrids, gsl_multiroot_fsolver_broyden
+   EWSB_args params = {this, ewsb_loop_order};
+
+   EWSB_solver* solvers[] = {
+      new Fixed_point_iterator<number_of_ewsb_equations, fixed_point_iterator::Convergence_tester_relative>(CLASSNAME::ewsb_step, &params, number_of_ewsb_iterations, ewsb_iteration_precision),
+      new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_hybrids),
+      new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_broyden)
    };
 
    double x_init[number_of_ewsb_equations];
@@ -277,7 +298,7 @@ int CLASSNAME::solve_ewsb_iteratively()
    for (std::size_t i = 0; i < sizeof(solvers)/sizeof(*solvers); ++i) {
       VERBOSE_MSG("\tStarting EWSB iteration using solver " << i);
       status = solve_ewsb_iteratively_with(solvers[i], x_init);
-      if (status == GSL_SUCCESS) {
+      if (status == EWSB_solver::SUCCESS) {
          VERBOSE_MSG("\tSolver " << i << " finished successfully!");
          break;
       }
@@ -289,15 +310,40 @@ int CLASSNAME::solve_ewsb_iteratively()
 #endif
    }
 
-   if (status != GSL_SUCCESS) {
+   if (status == EWSB_solver::SUCCESS) {
+      problems.unflag_no_ewsb();
+   } else {
       problems.flag_no_ewsb();
 #ifdef ENABLE_VERBOSE
       WARNING("\tCould not find a solution to the EWSB equations!"
               " (requested precision: " << ewsb_iteration_precision << ")");
 #endif
-   } else {
-      problems.unflag_no_ewsb();
    }
+
+   for (std::size_t i = 0; i < sizeof(solvers)/sizeof(*solvers); ++i)
+      delete solvers[i];
+
+   return status;
+}
+
+/**
+ * Solves EWSB equations with given EWSB solver
+ *
+ * @param solver EWSB solver
+ * @param x_init initial values
+ *
+ * @return status of the EWSB solver
+ */
+int CLASSNAME::solve_ewsb_iteratively_with(
+   EWSB_solver* solver,
+   const double x_init[number_of_ewsb_equations]
+)
+{
+   const int status = solver->solve(x_init);
+
+   BMu = solver->get_solution(0);
+   Mu = solver->get_solution(1);
+
 
    return status;
 }
@@ -387,16 +433,97 @@ void CLASSNAME::ewsb_initial_guess(double x_init[number_of_ewsb_equations])
 
 }
 
-int CLASSNAME::solve_ewsb_iteratively_with(const gsl_multiroot_fsolver_type* solver,
-                                           const double x_init[number_of_ewsb_equations])
+/**
+ * Calculates EWSB output parameters including loop-corrections.
+ *
+ * @param ewsb_parameters new EWSB output parameters.  \a
+ * ewsb_parameters is only modified if all new parameters are finite.
+ *
+ * @return GSL_SUCCESS if new EWSB output parameters are finite,
+ * GSL_EDOM otherwise.
+ */
+int CLASSNAME::ewsb_step(double ewsb_parameters[number_of_ewsb_equations]) const
 {
-   Ewsb_parameters params = {this, ewsb_loop_order};
-   Root_finder<number_of_ewsb_equations> root_finder(CLASSNAME::tadpole_equations,
-                              &params,
-                              number_of_ewsb_iterations,
-                              ewsb_iteration_precision);
-   root_finder.set_solver_type(solver);
-   const int status = root_finder.find_root(x_init);
+   int error;
+   double tadpole[number_of_ewsb_equations] = { 0. };
+
+   if (ewsb_loop_order > 0) {
+      tadpole[0] += Re(tadpole_hh(0));
+      tadpole[1] += Re(tadpole_hh(1));
+
+      if (ewsb_loop_order > 1) {
+         double two_loop_tadpole[2];
+         tadpole_hh_2loop(two_loop_tadpole);
+         tadpole[0] += two_loop_tadpole[0];
+         tadpole[1] += two_loop_tadpole[1];
+
+      }
+   }
+
+   double BMu;
+   double Mu;
+
+   BMu = (0.05*(-20*mHd2*vd*vu + 20*mHu2*vd*vu + 20*vu*tadpole[0] - 20*vd*
+      tadpole[1] - 3*Power(vd,3)*vu*Sqr(g1) + 3*vd*Power(vu,3)*Sqr(g1) - 5*Power(
+      vd,3)*vu*Sqr(g2) + 5*vd*Power(vu,3)*Sqr(g2)))/(Sqr(vd) - Sqr(vu));
+   Mu = 0.15811388300841897*LOCALINPUT(SignMu)*Sqrt((-40*mHd2*vd + 40*vu*BMu +
+      40*tadpole[0] - 3*Power(vd,3)*Sqr(g1) - 5*Power(vd,3)*Sqr(g2) + 3*vd*Sqr(g1)
+      *Sqr(vu) + 5*vd*Sqr(g2)*Sqr(vu))/vd);
+
+   const bool is_finite = std::isfinite(BMu) && std::isfinite(Mu);
+
+
+   if (is_finite) {
+      error = GSL_SUCCESS;
+      ewsb_parameters[0] = BMu;
+      ewsb_parameters[1] = Mu;
+
+   } else {
+      error = GSL_EDOM;
+   }
+
+   return error;
+}
+
+/**
+ * Calculates EWSB output parameters including loop-corrections.
+ *
+ * @param x old EWSB output parameters
+ * @param params further function parameters
+ * @param f new EWSB output parameters
+ *
+ * @return Returns status of CLASSNAME::ewsb_step
+ */
+int CLASSNAME::ewsb_step(const gsl_vector* x, void* params, gsl_vector* f)
+{
+   if (contains_nan(x, number_of_ewsb_equations)) {
+      for (std::size_t i = 0; i < number_of_ewsb_equations; ++i)
+         gsl_vector_set(f, i, std::numeric_limits<double>::max());
+      return GSL_EDOM;
+   }
+
+   const CLASSNAME::EWSB_args* ewsb_args
+      = static_cast<CLASSNAME::EWSB_args*>(params);
+   CMSSM* model = ewsb_args->model;
+   const unsigned ewsb_loop_order = ewsb_args->ewsb_loop_order;
+
+   const double BMu = gsl_vector_get(x, 0);
+   const double Mu = INPUT(SignMu) * Abs(gsl_vector_get(x, 1));
+
+   model->set_BMu(BMu);
+   model->set_Mu(Mu);
+
+
+   if (ewsb_loop_order > 0)
+      model->calculate_DRbar_masses();
+
+   double ewsb_parameters[number_of_ewsb_equations] =
+      { BMu, Mu };
+
+   const int status = model->ewsb_step(ewsb_parameters);
+
+   for (std::size_t i = 0; i < number_of_ewsb_equations; ++i)
+      gsl_vector_set(f, i, ewsb_parameters[i]);
 
    return status;
 }
