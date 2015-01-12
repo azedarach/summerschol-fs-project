@@ -43,6 +43,7 @@ LIBFLEXI_HDR := \
 		$(DIR)/dilog.h \
 		$(DIR)/error.hpp \
 		$(DIR)/ew_input.hpp \
+		$(DIR)/fixed_point_iterator.hpp \
 		$(DIR)/grid_scanner.hpp \
 		$(DIR)/gsl_utils.hpp \
 		$(DIR)/gut_scale_calculator.hpp \
