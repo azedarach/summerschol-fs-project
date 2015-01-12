@@ -29,6 +29,7 @@ ENABLE_VERBOSE        := @ENABLE_VERBOSE@
 MODELS             := @MODELS@
 MODULES            := config src fflite legacy slhaea doc
 MODULES            += $(MODELS)
+MODULES            += test
 
 # Variables for Mathematica meta code
 MATH               := @MATH@

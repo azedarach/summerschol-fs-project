@@ -41704,19 +41704,26 @@ std::complex<double> CLASSNAME::tadpole_hh(unsigned gO1) const
 
 
 void CLASSNAME::calculate_MSu_3rd_generation(double& msf1, double& msf2, double& theta) const {
-   sfermions::Mass_data sf_data;
-   sf_data.ml2 = mq2(2,2);
-   sf_data.mr2 = mu2(2,2);
-   sf_data.yf  = Yu(2,2);
-   sf_data.vd  = vd;
-   sf_data.vu  = vu;
-   sf_data.gY  = 0.7745966692414834*g1;
-   sf_data.g2  = g2;
-   sf_data.Tyf = TYu(2,2);
-   sf_data.mu  = 0.7071067811865475*vs*Lambdax;
-   sf_data.T3  = sfermions::Isospin[sfermions::up];
-   sf_data.Yl  = sfermions::Hypercharge_left[sfermions::up];
-   sf_data.Yr  = sfermions::Hypercharge_right[sfermions::up];
+   sfermions::U1_extended_mass_data_one_singlet sf_data;
+   sf_data.ml2    = mq2(2,2);
+   sf_data.mr2    = mu2(2,2);
+   sf_data.yf     = Yu(2,2);
+   sf_data.vd     = vd;
+   sf_data.vu     = vu;
+   sf_data.vs     = vs;
+   sf_data.QHd    = -3.;
+   sf_data.QHu    = -2.;
+   sf_data.QS     = 5.;
+   sf_data.gY     = 0.7745966692414834*g1;
+   sf_data.g2     = g2;
+   sf_data.gN     = 0.15811388300841897*gN;
+   sf_data.Tyf    = TYu(2,2);
+   sf_data.mueff  = 0.7071067811865475*vs*Lambdax;
+   sf_data.T3     = sfermions::Isospin[sfermions::up];
+   sf_data.Yl     = sfermions::Hypercharge_left[sfermions::up];
+   sf_data.Yr     = sfermions::Hypercharge_right[sfermions::up];
+   sf_data.Ql     = sfermions::U1prime_charge_left[sfermions::up];
+   sf_data.Qr     = sfermions::U1prime_charge_right[sfermions::up];
 
    Eigen::Array<double,2,1> msf;
 
@@ -41726,19 +41733,26 @@ void CLASSNAME::calculate_MSu_3rd_generation(double& msf1, double& msf2, double&
 }
 
 void CLASSNAME::calculate_MSd_3rd_generation(double& msf1, double& msf2, double& theta) const {
-   sfermions::Mass_data sf_data;
-   sf_data.ml2 = mq2(2,2);
-   sf_data.mr2 = md2(2,2);
-   sf_data.yf  = Yd(2,2);
-   sf_data.vd  = vd;
-   sf_data.vu  = vu;
-   sf_data.gY  = 0.7745966692414834*g1;
-   sf_data.g2  = g2;
-   sf_data.Tyf = TYd(2,2);
-   sf_data.mu  = 0.7071067811865475*vs*Lambdax;
-   sf_data.T3  = sfermions::Isospin[sfermions::down];
-   sf_data.Yl  = sfermions::Hypercharge_left[sfermions::down];
-   sf_data.Yr  = sfermions::Hypercharge_right[sfermions::down];
+   sfermions::U1_extended_mass_data_one_singlet sf_data;
+   sf_data.ml2    = mq2(2,2);
+   sf_data.mr2    = md2(2,2);
+   sf_data.yf     = Yd(2,2);
+   sf_data.vd     = vd;
+   sf_data.vu     = vu;
+   sf_data.vs     = vs;
+   sf_data.QHd    = -3.;
+   sf_data.QHu    = -2.;
+   sf_data.QS     = 5.;
+   sf_data.gY     = 0.7745966692414834*g1;
+   sf_data.g2     = g2;
+   sf_data.gN     = 0.15811388300841897*gN;
+   sf_data.Tyf    = TYd(2,2);
+   sf_data.mueff  = 0.7071067811865475*vs*Lambdax;
+   sf_data.T3     = sfermions::Isospin[sfermions::down];
+   sf_data.Yl     = sfermions::Hypercharge_left[sfermions::down];
+   sf_data.Yr     = sfermions::Hypercharge_right[sfermions::down];
+   sf_data.Ql     = sfermions::U1prime_charge_left[sfermions::down];
+   sf_data.Qr     = sfermions::U1prime_charge_right[sfermions::down];
 
    Eigen::Array<double,2,1> msf;
 
@@ -41748,19 +41762,26 @@ void CLASSNAME::calculate_MSd_3rd_generation(double& msf1, double& msf2, double&
 }
 
 void CLASSNAME::calculate_MSv_3rd_generation(double& msf1, double& msf2, double& theta) const {
-   sfermions::Mass_data sf_data;
-   sf_data.ml2 = ml2(2,2);
-   sf_data.mr2 = 0.;
-   sf_data.yf  = 0.;
-   sf_data.vd  = vd;
-   sf_data.vu  = vu;
-   sf_data.gY  = 0.7745966692414834*g1;
-   sf_data.g2  = g2;
-   sf_data.Tyf = 0.;
-   sf_data.mu  = 0.7071067811865475*vs*Lambdax;
-   sf_data.T3  = sfermions::Isospin[sfermions::neutrino];
-   sf_data.Yl  = sfermions::Hypercharge_left[sfermions::neutrino];
-   sf_data.Yr  = sfermions::Hypercharge_right[sfermions::neutrino];
+   sfermions::U1_extended_mass_data_one_singlet sf_data;
+   sf_data.ml2    = ml2(2,2);
+   sf_data.mr2    = 0.;
+   sf_data.yf     = 0.;
+   sf_data.vd     = vd;
+   sf_data.vu     = vu;
+   sf_data.vs     = vs;
+   sf_data.QHd    = -3.;
+   sf_data.QHu    = -2.;
+   sf_data.QS     = 5.;
+   sf_data.gY     = 0.7745966692414834*g1;
+   sf_data.g2     = g2;
+   sf_data.gN     = 0.15811388300841897*gN;
+   sf_data.Tyf    = 0.;
+   sf_data.mueff  = 0.7071067811865475*vs*Lambdax;
+   sf_data.T3     = sfermions::Isospin[sfermions::neutrino];
+   sf_data.Yl     = sfermions::Hypercharge_left[sfermions::neutrino];
+   sf_data.Yr     = sfermions::Hypercharge_right[sfermions::neutrino];
+   sf_data.Ql     = sfermions::U1prime_charge_left[sfermions::neutrino];
+   sf_data.Qr     = sfermions::U1prime_charge_right[sfermions::neutrino];
 
    Eigen::Array<double,2,1> msf;
 
@@ -41770,19 +41791,26 @@ void CLASSNAME::calculate_MSv_3rd_generation(double& msf1, double& msf2, double&
 }
 
 void CLASSNAME::calculate_MSe_3rd_generation(double& msf1, double& msf2, double& theta) const {
-   sfermions::Mass_data sf_data;
-   sf_data.ml2 = ml2(2,2);
-   sf_data.mr2 = me2(2,2);
-   sf_data.yf  = Ye(2,2);
-   sf_data.vd  = vd;
-   sf_data.vu  = vu;
-   sf_data.gY  = 0.7745966692414834*g1;
-   sf_data.g2  = g2;
-   sf_data.Tyf = TYe(2,2);
-   sf_data.mu  = 0.7071067811865475*vs*Lambdax;
-   sf_data.T3  = sfermions::Isospin[sfermions::electron];
-   sf_data.Yl  = sfermions::Hypercharge_left[sfermions::electron];
-   sf_data.Yr  = sfermions::Hypercharge_right[sfermions::electron];
+   sfermions::U1_extended_mass_data_one_singlet sf_data;
+   sf_data.ml2    = ml2(2,2);
+   sf_data.mr2    = me2(2,2);
+   sf_data.yf     = Ye(2,2);
+   sf_data.vd     = vd;
+   sf_data.vu     = vu;
+   sf_data.vs     = vs;
+   sf_data.QHd    = -3.;
+   sf_data.QHu    = -2.;
+   sf_data.QS     = 5.;
+   sf_data.gY     = 0.7745966692414834*g1;
+   sf_data.g2     = g2;
+   sf_data.gN     = 0.15811388300841897*gN;
+   sf_data.Tyf    = TYe(2,2);
+   sf_data.mueff  = 0.7071067811865475*vs*Lambdax;
+   sf_data.T3     = sfermions::Isospin[sfermions::electron];
+   sf_data.Yl     = sfermions::Hypercharge_left[sfermions::electron];
+   sf_data.Yr     = sfermions::Hypercharge_right[sfermions::electron];
+   sf_data.Ql     = sfermions::U1prime_charge_left[sfermions::electron];
+   sf_data.Qr     = sfermions::U1prime_charge_right[sfermions::electron];
 
    Eigen::Array<double,2,1> msf;
 
