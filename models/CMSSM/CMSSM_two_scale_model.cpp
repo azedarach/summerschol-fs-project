@@ -892,6 +892,476 @@ void CLASSNAME::run_to(double scale, double eps)
    CMSSM_soft_parameters::run_to(scale, eps);
 }
 
+double CLASSNAME::get_parameter(unsigned parameter) const
+{
+   if (parameter >= CMSSM_info::NUMBER_OF_PARAMETERS)
+      throw UnknownModelParameterError(parameter);
+
+   switch(parameter) {
+
+   case CMSSM_info::Yd00:
+      return Yd(0,0);
+   case CMSSM_info::Yd01:
+      return Yd(0,1);
+   case CMSSM_info::Yd02:
+      return Yd(0,2);
+   case CMSSM_info::Yd10:
+      return Yd(1,0); 
+   case CMSSM_info::Yd11:
+      return Yd(1,1); 
+   case CMSSM_info::Yd12:
+      return Yd(1,2); 
+   case CMSSM_info::Yd20:
+      return Yd(2,0); 
+   case CMSSM_info::Yd21:
+      return Yd(2,1);
+   case CMSSM_info::Yd22:
+      return Yd(2,2); 
+   case CMSSM_info::Ye00:
+      return Ye(0,0); 
+   case CMSSM_info::Ye01:
+      return Ye(0,1); 
+   case CMSSM_info::Ye02:
+      return Ye(0,2); 
+   case CMSSM_info::Ye10:
+      return Ye(1,0);
+   case CMSSM_info::Ye11:
+      return Ye(1,1); 
+   case CMSSM_info::Ye12:
+      return Ye(1,2); 
+   case CMSSM_info::Ye20:
+      return Ye(2,0); 
+   case CMSSM_info::Ye21:
+      return Ye(2,1); 
+   case CMSSM_info::Ye22:
+      return Ye(2,2);
+   case CMSSM_info::Yu00:
+      return Yu(0,0); 
+   case CMSSM_info::Yu01:
+      return Yu(0,1); 
+   case CMSSM_info::Yu02:
+      return Yu(0,2);
+   case CMSSM_info::Yu10:
+      return Yu(1,0); 
+   case CMSSM_info::Yu11:
+      return Yu(1,1); 
+   case CMSSM_info::Yu12:
+      return Yu(1,2); 
+   case CMSSM_info::Yu20:
+      return Yu(2,0); 
+   case CMSSM_info::Yu21:
+      return Yu(2,1); 
+   case CMSSM_info::Yu22:
+      return Yu(2,2); 
+   case CMSSM_info::Mu:
+      return Mu;
+   case CMSSM_info::g1:
+      return g1; 
+   case CMSSM_info::g2:
+      return g2; 
+   case CMSSM_info::g3:
+      return g3; 
+   case CMSSM_info::vd:
+      return vd; 
+   case CMSSM_info::vu:
+      return vu;
+   case CMSSM_info::TYd00:
+      return TYd(0,0); 
+   case CMSSM_info::TYd01:
+      return TYd(0,1);
+   case CMSSM_info::TYd02:
+      return TYd(0,2); 
+   case CMSSM_info::TYd10:
+      return TYd(1,0); 
+   case CMSSM_info::TYd11:
+      return TYd(1,1); 
+   case CMSSM_info::TYd12:
+      return TYd(1,2);
+   case CMSSM_info::TYd20:
+      return TYd(2,0); 
+   case CMSSM_info::TYd21:
+      return TYd(2,1); 
+   case CMSSM_info::TYd22:
+      return TYd(2,2); 
+   case CMSSM_info::TYe00:
+      return TYe(0,0); 
+   case CMSSM_info::TYe01:
+      return TYe(0,1); 
+   case CMSSM_info::TYe02:
+      return TYe(0,2); 
+   case CMSSM_info::TYe10:
+      return TYe(1,0);
+   case CMSSM_info::TYe11:
+      return TYe(1,1); 
+   case CMSSM_info::TYe12:
+      return TYe(1,2); 
+   case CMSSM_info::TYe20:
+      return TYe(2,0); 
+   case CMSSM_info::TYe21:
+      return TYe(2,1); 
+   case CMSSM_info::TYe22:
+      return TYe(2,2); 
+   case CMSSM_info::TYu00:
+      return TYu(0,0);
+   case CMSSM_info::TYu01:
+      return TYu(0,1); 
+   case CMSSM_info::TYu02:
+      return TYu(0,2); 
+   case CMSSM_info::TYu10:
+      return TYu(1,0); 
+   case CMSSM_info::TYu11:
+      return TYu(1,1); 
+   case CMSSM_info::TYu12:
+      return TYu(1,2);
+   case CMSSM_info::TYu20:
+      return TYu(2,0); 
+   case CMSSM_info::TYu21:
+      return TYu(2,1); 
+   case CMSSM_info::TYu22:
+      return TYu(2,2); 
+   case CMSSM_info::BMu:
+      return BMu; 
+   case CMSSM_info::mq200:
+      return mq2(0,0); 
+   case CMSSM_info::mq201:
+      return mq2(0,1); 
+   case CMSSM_info::mq202:
+      return mq2(0,2); 
+   case CMSSM_info::mq210:
+      return mq2(1,0); 
+   case CMSSM_info::mq211:
+      return mq2(1,1); 
+   case CMSSM_info::mq212:
+      return mq2(1,2); 
+   case CMSSM_info::mq220:
+      return mq2(2,0);
+   case CMSSM_info::mq221:
+      return mq2(2,1); 
+   case CMSSM_info::mq222:
+      return mq2(2,2); 
+   case CMSSM_info::ml200:
+      return ml2(0,0); 
+   case CMSSM_info::ml201:
+      return ml2(0,1); 
+   case CMSSM_info::ml202:
+      return ml2(0,2); 
+   case CMSSM_info::ml210:
+      return ml2(1,0); 
+   case CMSSM_info::ml211:
+      return ml2(1,1); 
+   case CMSSM_info::ml212:
+      return ml2(1,2); 
+   case CMSSM_info::ml220:
+      return ml2(2,0); 
+   case CMSSM_info::ml221:
+      return ml2(2,1); 
+   case CMSSM_info::ml222:
+      return ml2(2,2);
+   case CMSSM_info::mHd2:
+      return mHd2; 
+   case CMSSM_info::mHu2:
+      return mHu2; 
+   case CMSSM_info::md200:
+      return md2(0,0); 
+   case CMSSM_info::md201:
+      return md2(0,1); 
+   case CMSSM_info::md202:
+      return md2(0,2); 
+   case CMSSM_info::md210:
+      return md2(1,0); 
+   case CMSSM_info::md211:
+      return md2(1,1); 
+   case CMSSM_info::md212:
+      return md2(1,2); 
+   case CMSSM_info::md220:
+      return md2(2,0); 
+   case CMSSM_info::md221:
+      return md2(2,1); 
+   case CMSSM_info::md222:
+      return md2(2,2);
+   case CMSSM_info::mu200:
+      return mu2(0,0); 
+   case CMSSM_info::mu201:
+      return mu2(0,1); 
+   case CMSSM_info::mu202:
+      return mu2(0,2); 
+   case CMSSM_info::mu210:
+      return mu2(1,0); 
+   case CMSSM_info::mu211:
+      return mu2(1,1); 
+   case CMSSM_info::mu212:
+      return mu2(1,2); 
+   case CMSSM_info::mu220:
+      return mu2(2,0); 
+   case CMSSM_info::mu221:
+      return mu2(2,1); 
+   case CMSSM_info::mu222:
+      return mu2(2,2); 
+   case CMSSM_info::me200:
+      return me2(0,0); 
+   case CMSSM_info::me201:
+      return me2(0,1);
+   case CMSSM_info::me202:
+      return me2(0,2); 
+   case CMSSM_info::me210:
+      return me2(1,0); 
+   case CMSSM_info::me211:
+      return me2(1,1); 
+   case CMSSM_info::me212:
+      return me2(1,2); 
+   case CMSSM_info::me220:
+      return me2(2,0); 
+   case CMSSM_info::me221:
+      return me2(2,1); 
+   case CMSSM_info::me222:
+      return me2(2,2); 
+   case CMSSM_info::MassB:
+      return MassB; 
+   case CMSSM_info::MassWB:
+      return MassWB;
+   case CMSSM_info::MassG:
+      return MassG;
+
+   default:
+      throw UnknownModelParameterError(parameter);
+   }
+}
+
+void CLASSNAME::set_parameter(unsigned parameter, double x)
+{
+   if (parameter >= CMSSM_info::NUMBER_OF_PARAMETERS)
+      throw UnknownModelParameterError(parameter);
+
+   switch (parameter) {
+
+   case CMSSM_info::Yd00:
+      Yd(0,0) = x;
+   case CMSSM_info::Yd01:
+      Yd(0,1) = x;
+   case CMSSM_info::Yd02:
+      Yd(0,2) = x;
+   case CMSSM_info::Yd10:
+      Yd(1,0) = x; 
+   case CMSSM_info::Yd11:
+      Yd(1,1) = x; 
+   case CMSSM_info::Yd12:
+      Yd(1,2) = x; 
+   case CMSSM_info::Yd20:
+      Yd(2,0) = x; 
+   case CMSSM_info::Yd21:
+      Yd(2,1) = x;
+   case CMSSM_info::Yd22:
+      Yd(2,2) = x; 
+   case CMSSM_info::Ye00:
+      Ye(0,0) = x; 
+   case CMSSM_info::Ye01:
+      Ye(0,1) = x; 
+   case CMSSM_info::Ye02:
+      Ye(0,2) = x; 
+   case CMSSM_info::Ye10:
+      Ye(1,0) = x;
+   case CMSSM_info::Ye11:
+      Ye(1,1) = x; 
+   case CMSSM_info::Ye12:
+      Ye(1,2) = x; 
+   case CMSSM_info::Ye20:
+      Ye(2,0) = x; 
+   case CMSSM_info::Ye21:
+      Ye(2,1) = x; 
+   case CMSSM_info::Ye22:
+      Ye(2,2) = x;
+   case CMSSM_info::Yu00:
+      Yu(0,0) = x; 
+   case CMSSM_info::Yu01:
+      Yu(0,1) = x; 
+   case CMSSM_info::Yu02:
+      Yu(0,2) = x;
+   case CMSSM_info::Yu10:
+      Yu(1,0) = x; 
+   case CMSSM_info::Yu11:
+      Yu(1,1) = x; 
+   case CMSSM_info::Yu12:
+      Yu(1,2) = x; 
+   case CMSSM_info::Yu20:
+      Yu(2,0) = x; 
+   case CMSSM_info::Yu21:
+      Yu(2,1) = x; 
+   case CMSSM_info::Yu22:
+      Yu(2,2) = x; 
+   case CMSSM_info::Mu:
+      Mu = x;
+   case CMSSM_info::g1:
+      g1 = x; 
+   case CMSSM_info::g2:
+      g2 = x; 
+   case CMSSM_info::g3:
+      g3 = x; 
+   case CMSSM_info::vd:
+      vd = x; 
+   case CMSSM_info::vu:
+      vu = x;
+   case CMSSM_info::TYd00:
+      TYd(0,0) = x; 
+   case CMSSM_info::TYd01:
+      TYd(0,1) = x;
+   case CMSSM_info::TYd02:
+      TYd(0,2) = x; 
+   case CMSSM_info::TYd10:
+      TYd(1,0) = x; 
+   case CMSSM_info::TYd11:
+      TYd(1,1) = x; 
+   case CMSSM_info::TYd12:
+      TYd(1,2) = x;
+   case CMSSM_info::TYd20:
+      TYd(2,0) = x; 
+   case CMSSM_info::TYd21:
+      TYd(2,1) = x; 
+   case CMSSM_info::TYd22:
+      TYd(2,2) = x; 
+   case CMSSM_info::TYe00:
+      TYe(0,0) = x; 
+   case CMSSM_info::TYe01:
+      TYe(0,1) = x; 
+   case CMSSM_info::TYe02:
+      TYe(0,2) = x; 
+   case CMSSM_info::TYe10:
+      TYe(1,0) = x;
+   case CMSSM_info::TYe11:
+      TYe(1,1) = x; 
+   case CMSSM_info::TYe12:
+      TYe(1,2) = x; 
+   case CMSSM_info::TYe20:
+      TYe(2,0) = x; 
+   case CMSSM_info::TYe21:
+      TYe(2,1) = x; 
+   case CMSSM_info::TYe22:
+      TYe(2,2) = x; 
+   case CMSSM_info::TYu00:
+      TYu(0,0) = x;
+   case CMSSM_info::TYu01:
+      TYu(0,1) = x; 
+   case CMSSM_info::TYu02:
+      TYu(0,2) = x; 
+   case CMSSM_info::TYu10:
+      TYu(1,0) = x; 
+   case CMSSM_info::TYu11:
+      TYu(1,1) = x; 
+   case CMSSM_info::TYu12:
+      TYu(1,2) = x;
+   case CMSSM_info::TYu20:
+      TYu(2,0) = x; 
+   case CMSSM_info::TYu21:
+      TYu(2,1) = x; 
+   case CMSSM_info::TYu22:
+      TYu(2,2) = x; 
+   case CMSSM_info::BMu:
+      BMu = x; 
+   case CMSSM_info::mq200:
+      mq2(0,0) = x; 
+   case CMSSM_info::mq201:
+      mq2(0,1) = x; 
+   case CMSSM_info::mq202:
+      mq2(0,2) = x; 
+   case CMSSM_info::mq210:
+      mq2(1,0) = x; 
+   case CMSSM_info::mq211:
+      mq2(1,1) = x; 
+   case CMSSM_info::mq212:
+      mq2(1,2) = x; 
+   case CMSSM_info::mq220:
+      mq2(2,0) = x;
+   case CMSSM_info::mq221:
+      mq2(2,1) = x; 
+   case CMSSM_info::mq222:
+      mq2(2,2) = x; 
+   case CMSSM_info::ml200:
+      ml2(0,0) = x; 
+   case CMSSM_info::ml201:
+      ml2(0,1) = x; 
+   case CMSSM_info::ml202:
+      ml2(0,2) = x; 
+   case CMSSM_info::ml210:
+      ml2(1,0) = x; 
+   case CMSSM_info::ml211:
+      ml2(1,1) = x; 
+   case CMSSM_info::ml212:
+      ml2(1,2) = x; 
+   case CMSSM_info::ml220:
+      ml2(2,0) = x; 
+   case CMSSM_info::ml221:
+      ml2(2,1) = x; 
+   case CMSSM_info::ml222:
+      ml2(2,2) = x;
+   case CMSSM_info::mHd2:
+      mHd2 = x; 
+   case CMSSM_info::mHu2:
+      mHu2 = x; 
+   case CMSSM_info::md200:
+      md2(0,0) = x; 
+   case CMSSM_info::md201:
+      md2(0,1) = x; 
+   case CMSSM_info::md202:
+      md2(0,2) = x; 
+   case CMSSM_info::md210:
+      md2(1,0) = x; 
+   case CMSSM_info::md211:
+      md2(1,1) = x; 
+   case CMSSM_info::md212:
+      md2(1,2) = x; 
+   case CMSSM_info::md220:
+      md2(2,0) = x; 
+   case CMSSM_info::md221:
+      md2(2,1) = x; 
+   case CMSSM_info::md222:
+      md2(2,2) = x;
+   case CMSSM_info::mu200:
+      mu2(0,0) = x; 
+   case CMSSM_info::mu201:
+      mu2(0,1) = x; 
+   case CMSSM_info::mu202:
+      mu2(0,2) = x; 
+   case CMSSM_info::mu210:
+      mu2(1,0) = x; 
+   case CMSSM_info::mu211:
+      mu2(1,1) = x; 
+   case CMSSM_info::mu212:
+      mu2(1,2) = x; 
+   case CMSSM_info::mu220:
+      mu2(2,0) = x; 
+   case CMSSM_info::mu221:
+      mu2(2,1) = x; 
+   case CMSSM_info::mu222:
+      mu2(2,2) = x; 
+   case CMSSM_info::me200:
+      me2(0,0) = x; 
+   case CMSSM_info::me201:
+      me2(0,1) = x;
+   case CMSSM_info::me202:
+      me2(0,2) = x; 
+   case CMSSM_info::me210:
+      me2(1,0) = x; 
+   case CMSSM_info::me211:
+      me2(1,1) = x; 
+   case CMSSM_info::me212:
+      me2(1,2) = x; 
+   case CMSSM_info::me220:
+      me2(2,0) = x; 
+   case CMSSM_info::me221:
+      me2(2,1) = x; 
+   case CMSSM_info::me222:
+      me2(2,2) = x; 
+   case CMSSM_info::MassB:
+      MassB = x; 
+   case CMSSM_info::MassWB:
+      MassWB = x;
+   case CMSSM_info::MassG:
+      MassG = x;
+
+   default:
+      throw UnknownModelParameterError(parameter);
+   }
+}
+
 /**
  * @brief finds the LSP and returns it's mass
  *

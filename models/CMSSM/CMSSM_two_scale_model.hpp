@@ -93,6 +93,10 @@ public:
    virtual void print(std::ostream&) const;
    virtual void set_precision(double);
 
+   // model interface
+   double get_parameter(unsigned) const;
+   void set_parameter(unsigned, double);
+
    double get_lsp(CMSSM_info::Particles&) const;
 
    double get_MVG() const { return MVG; }
