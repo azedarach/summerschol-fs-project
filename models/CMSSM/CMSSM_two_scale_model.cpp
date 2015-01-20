@@ -28,6 +28,7 @@
  */
 
 #include "CMSSM_two_scale_model.hpp"
+#include "numerics.hpp"
 #include "wrappers.hpp"
 #include "linalg2.hpp"
 #include "logger.hpp"
@@ -1360,6 +1361,790 @@ void CLASSNAME::set_parameter(unsigned parameter, double x)
    default:
       throw UnknownModelParameterError(parameter);
    }
+}
+
+/**
+ * @brief finds the expansion of the low energy soft gaugino masses
+ *
+ * This function calculates the expansion of the soft gaugino masses
+ * in terms of the input parameters m0, m12 and Azero. This is
+ * \f$ M_i = p A_0 + q M_{1/2} \f$.
+ * 
+ * @param soft gaugino mass to calculate for
+ * @param low scale to calculate expansion at
+ * @param high scale at which input parameters are defined
+ * @return array of coefficients (p, q) as defined above 
+ */
+Eigen::Array<double,2,1> CLASSNAME::get_soft_gaugino_mass_coeffs(CMSSM_info::Parameters gaugino_mass,
+                                                                 double low_scale, double high_scale) const
+{
+   const auto m0 = LOCALINPUT(m0);
+   const auto m12 = LOCALINPUT(m12);
+   const auto Azero = LOCALINPUT(Azero);
+
+   CMSSM_soft_parameters run_model;
+   run_model.set_loops(get_loops());
+   run_model.set_scale(get_scale());
+   run_model.set_thresholds(get_thresholds());
+   run_model.set_input_parameters(input);
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   // generate points
+   double m0_pt1 = m0;
+   double m12_pt1 = 0.;
+   double Azero_pt1 = Azero;
+
+   if (is_zero(Abs(Azero_pt1))) {
+      Azero_pt1 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt1, m12_pt1, Azero_pt1);
+
+   run_model.run_to(low_scale);
+
+   double mass_pt1;
+   switch(gaugino_mass) {
+   case CMSSM_info::MassB: {
+      mass_pt1 = run_model.get_MassB(); 
+      break;
+   }
+   case CMSSM_info::MassWB: {
+      mass_pt1 = run_model.get_MassWB();
+      break;
+   }
+   case CMSSM_info::MassG: {
+      mass_pt1 = run_model.get_MassG();
+      break;
+   }
+   default :
+      throw UnknownModelParameterError(gaugino_mass);
+   }
+
+   run_model.set_scale(get_scale());
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   double m0_pt2 = m0;
+   double m12_pt2 = m12;
+   double Azero_pt2 = 0.;
+
+   if (is_zero(Abs(m12_pt2))) {
+      m12_pt2 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt2, m12_pt2, Azero_pt2);
+
+   run_model.run_to(low_scale);
+
+   double mass_pt2;
+   switch(gaugino_mass) {
+   case CMSSM_info::MassB: {
+      mass_pt2 = run_model.get_MassB(); 
+      break;
+   }
+   case CMSSM_info::MassWB: {
+      mass_pt2 = run_model.get_MassWB();
+      break;
+   }
+   case CMSSM_info::MassG: {
+      mass_pt2 = run_model.get_MassG();
+      break;
+   }
+   default :
+      throw UnknownModelParameterError(gaugino_mass);
+   }
+
+   const double oneOverdetc = 1.0 / Sqr(Azero_pt1 * m12_pt2 - Azero_pt2 * m12_pt1);
+   const double c11 = oneOverdetc * (Sqr(m12_pt1) + Sqr(m12_pt2));
+   const double c22 = oneOverdetc * (Sqr(Azero_pt1) + Sqr(Azero_pt2));
+   const double c12 = -oneOverdetc * (Azero_pt1 * m12_pt1 + Azero_pt2 * m12_pt2);
+
+   Eigen::Array<double,2,1> coeffs;
+
+   coeffs(0) = c11 * (mass_pt1 * Azero_pt1 + mass_pt2 * Azero_pt2)
+      + c12 * (mass_pt1 * m12_pt1 + mass_pt2 * m12_pt2);
+   coeffs(1) = c12 * (mass_pt1 * Azero_pt1 + mass_pt2 * Azero_pt2)
+      + c22 * (mass_pt1 * m12_pt1 + mass_pt2 * m12_pt2);
+
+   return coeffs;
+}
+
+/**
+ * @brief finds the expansion of the low energy soft scalar squared masses
+ *
+ * This function calculates the expansion of the soft scalar squared masses
+ * in terms of the input parameters m0, m12 and Azero. This is
+ * \f$ m^2 = a m_0^2 + b M_{1/2}^2 + c M_{1/2} A_0 + d A_0^2 \f$.
+ * 
+ * @param soft scalar mass squared to calculate for
+ * @param low scale to calculate expansion at
+ * @param high scale at which input parameters are defined
+ * @return array of coefficients (a, b, c, d) as defined above 
+ */
+Eigen::Array<double,4,1> CLASSNAME::get_soft_scalar_mass_coeffs(CMSSM_info::Parameters soft_mass,
+                                                                double low_scale, double high_scale) const
+{
+   const auto m0 = LOCALINPUT(m0);
+   const auto m12 = LOCALINPUT(m12);
+   const auto Azero = LOCALINPUT(Azero);
+
+   CMSSM_soft_parameters run_model;
+   run_model.set_loops(get_loops());
+   run_model.set_scale(get_scale());
+   run_model.set_thresholds(get_thresholds());
+   run_model.set_input_parameters(input);
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   // generate points
+   double m0_pt1 = m0;
+   double m12_pt1 = 0.;
+   double Azero_pt1 = 0.;
+
+   if (is_zero(Abs(m0_pt1))) {
+      m0_pt1 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt1, m12_pt1, Azero_pt1);
+
+   run_model.run_to(low_scale);
+
+   double soft_mass_pt1 = get_soft_mass_squared(run_model, soft_mass);
+
+   run_model.set_scale(get_scale());
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   double m0_pt2 = 0.;
+   double m12_pt2 = m12;
+   double Azero_pt2 = 0.;
+
+   if (is_zero(Abs(m12_pt2))) {
+      m12_pt2 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt2, m12_pt2, Azero_pt2);
+
+   run_model.run_to(low_scale);
+
+   double soft_mass_pt2 = get_soft_mass_squared(run_model, soft_mass);
+
+   run_model.set_scale(get_scale());
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   double m0_pt3 = 0.;
+   double m12_pt3 = 0.;
+   double Azero_pt3 = Azero;
+
+   if (is_zero(Abs(Azero_pt3))) {
+      Azero_pt3 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt3, m12_pt3, Azero_pt3);
+
+   run_model.run_to(low_scale);
+
+   double soft_mass_pt3 = get_soft_mass_squared(run_model, soft_mass);
+
+   run_model.set_scale(get_scale());
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   double m0_pt4 = 0.;
+   double m12_pt4 = m12;
+   double Azero_pt4 = Azero;
+
+   if (is_zero(Abs(m12_pt4))) {
+      m12_pt2 = 1.0;
+   } 
+
+   if (is_zero(Abs(Azero_pt4))) {
+      Azero_pt4 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt4, m12_pt4, Azero_pt4);
+
+   run_model.run_to(low_scale);
+
+   double soft_mass_pt4 = get_soft_mass_squared(run_model, soft_mass);
+
+   Eigen::Matrix<double,4,4> invC;
+
+   invC(0,0) = Power(m0_pt1, 4) + Power(m0_pt2, 4) + Power(m0_pt3, 4) + Power(m0_pt4, 4);
+   invC(0,1) = Sqr(m0_pt1) * Sqr(m12_pt1) + Sqr(m0_pt2) * Sqr(m12_pt2) + Sqr(m0_pt3) * Sqr(m12_pt3)
+      + Sqr(m0_pt4) * Sqr(m12_pt4);
+   invC(0,2) = Sqr(m0_pt1) * m12_pt1 * Azero_pt1 + Sqr(m0_pt2) * m12_pt2 * Azero_pt2
+      + Sqr(m0_pt3) * m12_pt3 * Azero_pt3 + Sqr(m0_pt4) * m12_pt4 * Azero_pt4;
+   invC(0,3) = Sqr(m0_pt1) * Sqr(Azero_pt1) + Sqr(m0_pt2) * Sqr(Azero_pt2) + Sqr(m0_pt3) * Sqr(Azero_pt3)
+      + Sqr(m0_pt4) * Sqr(Azero_pt4);
+   invC(1,0) = invC(0,1);
+   invC(1,1) = Power(m12_pt1, 4) + Power(m12_pt2, 4) + Power(m12_pt3, 4) + Power(m12_pt4, 4);
+   invC(1,2) = Power(m12_pt1, 3) * Azero_pt1 + Power(m12_pt2, 3) * Azero_pt2 + Power(m12_pt3, 3) * Azero_pt3
+      + Power(m12_pt4, 3) * Azero_pt4;
+   invC(1,3) = Sqr(m12_pt1) * Sqr(Azero_pt1) + Sqr(m12_pt2) * Sqr(Azero_pt2) + Sqr(m12_pt3) * Sqr(Azero_pt3)
+      + Sqr(m12_pt4) * Sqr(Azero_pt4);
+   invC(2,0) = invC(0,2);
+   invC(2,1) = invC(1,2);
+   invC(2,2) = invC(1,3);
+   invC(2,3) = Power(Azero_pt1, 3) * m12_pt1 + Power(Azero_pt2, 3) * m12_pt2 + Power(Azero_pt3, 3) * m12_pt3
+      + Power(Azero_pt4, 3) * m12_pt4;
+   invC(3,0) = invC(0,3);
+   invC(3,1) = invC(1,3);
+   invC(3,2) = invC(2,3);
+   invC(3,3) = Power(Azero_pt1, 4) + Power(Azero_pt2, 4) + Power(Azero_pt3, 4) + Power(Azero_pt4, 4);
+
+   Eigen::Matrix<double,4,4> C = invC.inverse();
+   
+   Eigen::Matrix<double,4,1> b;
+
+   b(0,0) = soft_mass_pt1 * Sqr(m0_pt1) + soft_mass_pt2 * Sqr(m0_pt2) + soft_mass_pt3 * Sqr(m0_pt3)
+      + soft_mass_pt4 * Sqr(m0_pt4);
+   b(1,0) = soft_mass_pt1 * Sqr(m12_pt1) + soft_mass_pt2 * Sqr(m12_pt2) + soft_mass_pt3 * Sqr(m12_pt3)
+      + soft_mass_pt4 * Sqr(m12_pt4);
+   b(2,0) = soft_mass_pt1 * m12_pt1 * Azero_pt1 + soft_mass_pt2 * m12_pt2 * Azero_pt2 
+      + soft_mass_pt3 * m12_pt3 * Azero_pt3 + soft_mass_pt4 * m12_pt4 * Azero_pt4;
+   b(3,0) = soft_mass_pt1 * Sqr(Azero_pt1) + soft_mass_pt2 * Sqr(Azero_pt2) + soft_mass_pt3 * Sqr(Azero_pt3)
+      + soft_mass_pt4 * Sqr(Azero_pt4);
+
+   return (C * b).array();
+}
+
+double CLASSNAME::get_soft_mass_squared(const CMSSM_soft_parameters& model, CMSSM_info::Parameters soft_mass) const
+{
+   double mass2;
+   switch(soft_mass) {
+   case CMSSM_info::mq200: {
+      mass2 = model.get_mq2(0,0);
+      break;
+   }
+   case CMSSM_info::mq201: {
+      mass2 = model.get_mq2(0,1);
+      break;
+   }
+   case CMSSM_info::mq202: {
+      mass2 = model.get_mq2(0,2);
+      break;
+   }
+   case CMSSM_info::mq210: {
+      mass2 = model.get_mq2(1,0);
+      break;
+   }
+   case CMSSM_info::mq211: {
+      mass2 = model.get_mq2(1,1);
+      break;
+   }
+   case CMSSM_info::mq212: {
+      mass2 = model.get_mq2(1,2);
+      break;
+   }
+   case CMSSM_info::mq220: {
+      mass2 = model.get_mq2(2,0);
+      break;
+   }
+   case CMSSM_info::mq221: {
+      mass2 = model.get_mq2(2,1);
+      break;
+   }
+   case CMSSM_info::mq222: {
+      mass2 = model.get_mq2(2,2);
+      break;
+   }
+
+   case CMSSM_info::ml200: {
+      mass2 = model.get_ml2(0,0);
+      break;
+   }
+   case CMSSM_info::ml201: {
+      mass2 = model.get_ml2(0,1);
+      break;
+   }
+   case CMSSM_info::ml202: {
+      mass2 = model.get_ml2(0,2);
+      break;
+   }
+   case CMSSM_info::ml210: {
+      mass2 = model.get_ml2(1,0);
+      break;
+   }
+   case CMSSM_info::ml211: {
+      mass2 = model.get_ml2(1,1);
+      break;
+   }
+   case CMSSM_info::ml212: {
+      mass2 = model.get_ml2(1,2);
+      break;
+   }
+   case CMSSM_info::ml220: {
+      mass2 = model.get_ml2(2,0);
+      break;
+   }
+   case CMSSM_info::ml221: {
+      mass2 = model.get_ml2(2,1);
+      break;
+   }
+   case CMSSM_info::ml222: {
+      mass2 = model.get_ml2(2,2);
+      break;
+   }
+
+   case CMSSM_info::md200: {
+      mass2 = model.get_md2(0,0);
+      break;
+   }
+   case CMSSM_info::md201: {
+      mass2 = model.get_md2(0,1);
+      break;
+   }
+   case CMSSM_info::md202: {
+      mass2 = model.get_md2(0,2);
+      break;
+   }
+   case CMSSM_info::md210: {
+      mass2 = model.get_md2(1,0);
+      break;
+   }
+   case CMSSM_info::md211: {
+      mass2 = model.get_md2(1,1);
+      break;
+   }
+   case CMSSM_info::md212: {
+      mass2 = model.get_md2(1,2);
+      break;
+   }
+   case CMSSM_info::md220: {
+      mass2 = model.get_md2(2,0);
+      break;
+   }
+   case CMSSM_info::md221: {
+      mass2 = model.get_md2(2,1);
+      break;
+   }
+   case CMSSM_info::md222: {
+      mass2 = model.get_md2(2,2);
+      break;
+   }
+
+   case CMSSM_info::mu200: {
+      mass2 = model.get_mu2(0,0);
+      break;
+   }
+   case CMSSM_info::mu201: {
+      mass2 = model.get_mu2(0,1);
+      break;
+   }
+   case CMSSM_info::mu202: {
+      mass2 = model.get_mu2(0,2);
+      break;
+   }
+   case CMSSM_info::mu210: {
+      mass2 = model.get_mu2(1,0);
+      break;
+   }
+   case CMSSM_info::mu211: {
+      mass2 = model.get_mu2(1,1);
+      break;
+   }
+   case CMSSM_info::mu212: {
+      mass2 = model.get_mu2(1,2);
+      break;
+   }
+   case CMSSM_info::mu220: {
+      mass2 = model.get_mu2(2,0);
+      break;
+   }
+   case CMSSM_info::mu221: {
+      mass2 = model.get_mu2(2,1);
+      break;
+   }
+   case CMSSM_info::mu222: {
+      mass2 = model.get_mu2(2,2);
+      break;
+   }
+
+   case CMSSM_info::me200: {
+      mass2 = model.get_me2(0,0);
+      break;
+   }
+   case CMSSM_info::me201: {
+      mass2 = model.get_me2(0,1);
+      break;
+   }
+   case CMSSM_info::me202: {
+      mass2 = model.get_me2(0,2);
+      break;
+   }
+   case CMSSM_info::me210: {
+      mass2 = model.get_me2(1,0);
+      break;
+   }
+   case CMSSM_info::me211: {
+      mass2 = model.get_me2(1,1);
+      break;
+   }
+   case CMSSM_info::me212: {
+      mass2 = model.get_me2(1,2);
+      break;
+   }
+   case CMSSM_info::me220: {
+      mass2 = model.get_me2(2,0);
+      break;
+   }
+   case CMSSM_info::me221: {
+      mass2 = model.get_me2(2,1);
+      break;
+   }
+   case CMSSM_info::me222: {
+      mass2 = model.get_me2(2,2);
+      break;
+   }
+
+   case CMSSM_info::mHd2: {
+      mass2 = model.get_mHd2();
+      break;
+   }
+
+   case CMSSM_info::mHu2: {
+      mass2 = model.get_mHu2();
+      break;
+   }
+
+   default :
+      throw UnknownModelParameterError(soft_mass);
+   }
+
+   return mass2;
+}
+
+/**
+ * @brief finds the expansion of the low energy soft trilinears
+ *
+ * This function calculates the expansion of the soft trilinears
+ * in terms of the input parameters m0, m12 and Azero. This is
+ * \f$ T_i = e A_0 + f M_{1/2} \f$.
+ * 
+ * @param soft trilinear to calculate for
+ * @param low scale to calculate expansion at
+ * @param high scale at which input parameters are defined
+ * @return array of coefficients (e, f) as defined above 
+ */
+Eigen::Array<double,2,1> CLASSNAME::get_soft_trilinear_coeffs(CMSSM_info::Parameters soft_trilinear, 
+                                                              double low_scale, double high_scale) const
+{
+   const auto m0 = LOCALINPUT(m0);
+   const auto m12 = LOCALINPUT(m12);
+   const auto Azero = LOCALINPUT(Azero);
+
+   CMSSM_soft_parameters run_model;
+   run_model.set_loops(get_loops());
+   run_model.set_scale(get_scale());
+   run_model.set_thresholds(get_thresholds());
+   run_model.set_input_parameters(input);
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   // generate points
+   double m0_pt1 = m0;
+   double m12_pt1 = 0.;
+   double Azero_pt1 = Azero;
+
+   if (is_zero(Abs(Azero_pt1))) {
+      Azero_pt1 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt1, m12_pt1, Azero_pt1);
+
+   run_model.run_to(low_scale);
+
+   double trilinear_pt1;
+   switch(soft_trilinear) {
+   case CMSSM_info::TYe00: {
+      trilinear_pt1 = run_model.get_TYe(0,0);
+      break;
+   }
+   case CMSSM_info::TYe01: {
+      trilinear_pt1 = run_model.get_TYe(0,1);
+      break;
+   }
+   case CMSSM_info::TYe02: {
+      trilinear_pt1 = run_model.get_TYe(0,2);
+      break;
+   }
+   case CMSSM_info::TYe10: {
+      trilinear_pt1 = run_model.get_TYe(1,0);
+      break;
+   }
+   case CMSSM_info::TYe11: {
+      trilinear_pt1 = run_model.get_TYe(1,1);
+      break;
+   }
+   case CMSSM_info::TYe12: {
+      trilinear_pt1 = run_model.get_TYe(1,2);
+      break;
+   }
+   case CMSSM_info::TYe20: {
+      trilinear_pt1 = run_model.get_TYe(2,0);
+      break;
+   }
+   case CMSSM_info::TYe21: {
+      trilinear_pt1 = run_model.get_TYe(2,1);
+      break;
+   }
+   case CMSSM_info::TYe22: {
+      trilinear_pt1 = run_model.get_TYe(2,2);
+      break;
+   }
+
+   case CMSSM_info::TYd00: {
+      trilinear_pt1 = run_model.get_TYd(0,0);
+      break;
+   }
+   case CMSSM_info::TYd01: {
+      trilinear_pt1 = run_model.get_TYd(0,1);
+      break;
+   }
+   case CMSSM_info::TYd02: {
+      trilinear_pt1 = run_model.get_TYd(0,2);
+      break;
+   }
+   case CMSSM_info::TYd10: {
+      trilinear_pt1 = run_model.get_TYd(1,0);
+      break;
+   }
+   case CMSSM_info::TYd11: {
+      trilinear_pt1 = run_model.get_TYd(1,1);
+      break;
+   }
+   case CMSSM_info::TYd12: {
+      trilinear_pt1 = run_model.get_TYd(1,2);
+      break;
+   }
+   case CMSSM_info::TYd20: {
+      trilinear_pt1 = run_model.get_TYd(2,0);
+      break;
+   }
+   case CMSSM_info::TYd21: {
+      trilinear_pt1 = run_model.get_TYd(2,1);
+      break;
+   }
+   case CMSSM_info::TYd22: {
+      trilinear_pt1 = run_model.get_TYd(2,2);
+      break;
+   }
+
+   case CMSSM_info::TYu00: {
+      trilinear_pt1 = run_model.get_TYu(0,0);
+      break;
+   }
+   case CMSSM_info::TYu01: {
+      trilinear_pt1 = run_model.get_TYu(0,1);
+      break;
+   }
+   case CMSSM_info::TYu02: {
+      trilinear_pt1 = run_model.get_TYu(0,2);
+      break;
+   }
+   case CMSSM_info::TYu10: {
+      trilinear_pt1 = run_model.get_TYu(1,0);
+      break;
+   }
+   case CMSSM_info::TYu11: {
+      trilinear_pt1 = run_model.get_TYu(1,1);
+      break;
+   }
+   case CMSSM_info::TYu12: {
+      trilinear_pt1 = run_model.get_TYu(1,2);
+      break;
+   }
+   case CMSSM_info::TYu20: {
+      trilinear_pt1 = run_model.get_TYu(2,0);
+      break;
+   }
+   case CMSSM_info::TYu21: {
+      trilinear_pt1 = run_model.get_TYu(2,1);
+      break;
+   }
+   case CMSSM_info::TYu22: {
+      trilinear_pt1 = run_model.get_TYu(2,2);
+      break;
+   }
+
+   default :
+      throw UnknownModelParameterError(soft_trilinear);
+   }
+
+   run_model.set_scale(get_scale());
+   run_model.set(get());
+
+   run_model.run_to(high_scale);
+
+   double m0_pt2 = m0;
+   double m12_pt2 = m12;
+   double Azero_pt2 = 0.;
+
+   if (is_zero(Abs(m12_pt2))) {
+      m12_pt2 = 1.0;
+   } 
+
+   set_pars_at_high_scale(run_model, m0_pt2, m12_pt2, Azero_pt2);
+
+   run_model.run_to(low_scale);
+
+   double trilinear_pt2;
+   switch(soft_trilinear) {
+   case CMSSM_info::TYe00: {
+      trilinear_pt2 = run_model.get_TYe(0,0);
+      break;
+   }
+   case CMSSM_info::TYe01: {
+      trilinear_pt2 = run_model.get_TYe(0,1);
+      break;
+   }
+   case CMSSM_info::TYe02: {
+      trilinear_pt2 = run_model.get_TYe(0,2);
+      break;
+   }
+   case CMSSM_info::TYe10: {
+      trilinear_pt2 = run_model.get_TYe(1,0);
+      break;
+   }
+   case CMSSM_info::TYe11: {
+      trilinear_pt2 = run_model.get_TYe(1,1);
+      break;
+   }
+   case CMSSM_info::TYe12: {
+      trilinear_pt2 = run_model.get_TYe(1,2);
+      break;
+   }
+   case CMSSM_info::TYe20: {
+      trilinear_pt2 = run_model.get_TYe(2,0);
+      break;
+   }
+   case CMSSM_info::TYe21: {
+      trilinear_pt2 = run_model.get_TYe(2,1);
+      break;
+   }
+   case CMSSM_info::TYe22: {
+      trilinear_pt2 = run_model.get_TYe(2,2);
+      break;
+   }
+
+   case CMSSM_info::TYd00: {
+      trilinear_pt2 = run_model.get_TYd(0,0);
+      break;
+   }
+   case CMSSM_info::TYd01: {
+      trilinear_pt2 = run_model.get_TYd(0,1);
+      break;
+   }
+   case CMSSM_info::TYd02: {
+      trilinear_pt2 = run_model.get_TYd(0,2);
+      break;
+   }
+   case CMSSM_info::TYd10: {
+      trilinear_pt2 = run_model.get_TYd(1,0);
+      break;
+   }
+   case CMSSM_info::TYd11: {
+      trilinear_pt2 = run_model.get_TYd(1,1);
+      break;
+   }
+   case CMSSM_info::TYd12: {
+      trilinear_pt2 = run_model.get_TYd(1,2);
+      break;
+   }
+   case CMSSM_info::TYd20: {
+      trilinear_pt2 = run_model.get_TYd(2,0);
+      break;
+   }
+   case CMSSM_info::TYd21: {
+      trilinear_pt2 = run_model.get_TYd(2,1);
+      break;
+   }
+   case CMSSM_info::TYd22: {
+      trilinear_pt2 = run_model.get_TYd(2,2);
+      break;
+   }
+
+   case CMSSM_info::TYu00: {
+      trilinear_pt2 = run_model.get_TYu(0,0);
+      break;
+   }
+   case CMSSM_info::TYu01: {
+      trilinear_pt2 = run_model.get_TYu(0,1);
+      break;
+   }
+   case CMSSM_info::TYu02: {
+      trilinear_pt2 = run_model.get_TYu(0,2);
+      break;
+   }
+   case CMSSM_info::TYu10: {
+      trilinear_pt2 = run_model.get_TYu(1,0);
+      break;
+   }
+   case CMSSM_info::TYu11: {
+      trilinear_pt2 = run_model.get_TYu(1,1);
+      break;
+   }
+   case CMSSM_info::TYu12: {
+      trilinear_pt2 = run_model.get_TYu(1,2);
+      break;
+   }
+   case CMSSM_info::TYu20: {
+      trilinear_pt2 = run_model.get_TYu(2,0);
+      break;
+   }
+   case CMSSM_info::TYu21: {
+      trilinear_pt2 = run_model.get_TYu(2,1);
+      break;
+   }
+   case CMSSM_info::TYu22: {
+      trilinear_pt2 = run_model.get_TYu(2,2);
+      break;
+   }
+
+   default :
+      throw UnknownModelParameterError(soft_trilinear);
+   }
+
+   const double oneOverdetc = 1.0 / Sqr(Azero_pt1 * m12_pt2 - Azero_pt2 * m12_pt1);
+   const double c11 = oneOverdetc * (Sqr(m12_pt1) + Sqr(m12_pt2));
+   const double c22 = oneOverdetc * (Sqr(Azero_pt1) + Sqr(Azero_pt2));
+   const double c12 = -oneOverdetc * (Azero_pt1 * m12_pt1 + Azero_pt2 * m12_pt2);
+
+   Eigen::Array<double,2,1> coeffs;
+
+   coeffs(0) = c11 * (trilinear_pt1 * Azero_pt1 + trilinear_pt2 * Azero_pt2)
+      + c12 * (trilinear_pt1 * m12_pt1 + trilinear_pt2 * m12_pt2);
+   coeffs(1) = c12 * (trilinear_pt1 * Azero_pt1 + trilinear_pt2 * Azero_pt2)
+      + c22 * (trilinear_pt1 * m12_pt1 + trilinear_pt2 * m12_pt2);
+
+   return coeffs;
+}
+
+void CLASSNAME::set_pars_at_high_scale(CMSSM_soft_parameters & model, double m0, double m12, double Azero) const
+{
+   model.set_TYe(Azero*Ye);
+   model.set_TYd(Azero*Yd);
+   model.set_TYu(Azero*Yu);
+   model.set_mHd2(Sqr(m0));
+   model.set_mHu2(Sqr(m0));
+   model.set_mq2(Sqr(m0)*UNITMATRIX(3));
+   model.set_ml2(Sqr(m0)*UNITMATRIX(3));
+   model.set_md2(Sqr(m0)*UNITMATRIX(3));
+   model.set_mu2(Sqr(m0)*UNITMATRIX(3));
+   model.set_me2(Sqr(m0)*UNITMATRIX(3));
+   model.set_MassB(m12);
+   model.set_MassWB(m12);
+   model.set_MassG(m12);
 }
 
 /**
