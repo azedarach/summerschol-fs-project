@@ -48,6 +48,7 @@
 #endif
 
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_multiroots.h>
 #include <Eigen/Core>
 
 namespace flexiblesusy {
@@ -71,8 +72,6 @@ public:
    void clear_DRbar_parameters();
    void do_calculate_sm_pole_masses(bool);
    bool do_calculate_sm_pole_masses() const;
-   void do_force_output(bool);
-   bool do_force_output() const;
    void reorder_DRbar_masses();
    void reorder_pole_masses();
    void set_ewsb_iteration_precision(double);
@@ -1261,8 +1260,15 @@ public:
    std::complex<double> self_energy_Fu_PL_heavy_rotated(double p , unsigned gO1, unsigned gO2) const;
    std::complex<double> tadpole_hh(unsigned gO1) const;
 
+   void calculate_MSu_3rd_generation(double&, double&, double&) const;
+   void calculate_MSd_3rd_generation(double&, double&, double&) const;
+   void calculate_MSv_3rd_generation(double&, double&, double&) const;
+   void calculate_MSe_3rd_generation(double&, double&, double&) const;
 
+   void self_energy_hh_2loop(double result[6]) const;
+   void self_energy_Ah_2loop(double result[6]) const;
 
+   void tadpole_hh_2loop(double result[3]) const;
 
    void calculate_MGlu_pole();
    void calculate_MFv_pole();
@@ -1336,7 +1342,6 @@ private:
    unsigned ewsb_loop_order;
    unsigned pole_mass_loop_order;
    bool calculate_sm_pole_masses; ///< switch to calculate the pole masses of the Standard Model particles
-   bool force_output;             ///< switch to force output of pole masses
    double precision;              ///< RG running precision
    double ewsb_iteration_precision;
    static const std::size_t number_of_ewsb_equations = 5;
