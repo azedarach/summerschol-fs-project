@@ -238,6 +238,11 @@ void CLASSNAME::tadpole_equations(double tadpole[number_of_ewsb_equations]) cons
       tadpole[4] -= Re(tadpole_hh(4));
 
       if (ewsb_loop_order > 1) {
+         double two_loop_tadpole[3];
+         tadpole_hh_2loop(two_loop_tadpole);
+         tadpole[0] -= two_loop_tadpole[0];
+         tadpole[1] -= two_loop_tadpole[1];
+         tadpole[2] -= two_loop_tadpole[2];
 
       }
    }
@@ -266,7 +271,10 @@ int CLASSNAME::tadpole_equations(const gsl_vector* x, void* params, gsl_vector* 
    CNE6SSM* model = ewsb_args->model;
    const unsigned ewsb_loop_order = ewsb_args->ewsb_loop_order;
 
-   model->set_vs(gsl_vector_get(x, 0));
+   const double s = INPUT(ssumInput);
+
+   model->set_vs(s * Cos(ArcTan(gsl_vector_get(x, 0))));
+   model->set_vsb(s * Sin(ArcTan(gsl_vector_get(x, 0))));
    model->set_Lambdax(gsl_vector_get(x, 1));
    model->set_vphi(gsl_vector_get(x, 2));
    model->set_XiF(gsl_vector_get(x, 3));
@@ -300,7 +308,7 @@ int CLASSNAME::solve_ewsb_iteratively()
    EWSB_args params = {this, ewsb_loop_order};
 
    EWSB_solver* solvers[] = {
-      new Fixed_point_iterator<number_of_ewsb_equations, fixed_point_iterator::Convergence_tester<relative>(CLASSNAME::ewsb_step, &params, number_of_ewsb_iterations, ewsb_iteration_precision),
+      new Fixed_point_iterator<number_of_ewsb_equations, fixed_point_iterator::Convergence_tester_relative>(CLASSNAME::ewsb_step, &params, number_of_ewsb_iterations, ewsb_iteration_precision),
       new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_hybrid),
       new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_hybrids),
       new Root_finder<number_of_ewsb_equations>(CLASSNAME::tadpole_equations, &params, number_of_ewsb_iterations, ewsb_iteration_precision, gsl_multiroot_fsolver_broyden)
@@ -364,7 +372,10 @@ int CLASSNAME::solve_ewsb_iteratively_with(
 {
    const int status = solver->solve(x_init);
 
-   vs = solver->get_solution(0);
+   const double s = LOCALINPUT(ssumInput);
+
+   vs = s * Cos(ArcTan(solver->get_solution(0)));
+   vsb = s * Sin(ArcTan(solver->get_solution(0)));
    Lambdax = solver->get_solution(1);
    vphi = solver->get_solution(2);
    XiF = solver->get_solution(3);
@@ -494,11 +505,64 @@ int CLASSNAME::solve_ewsb()
 
 void CLASSNAME::ewsb_initial_guess(double x_init[number_of_ewsb_equations])
 {
-   x_init[0] = vs;
-   x_init[1] = Lambdax;
-   x_init[2] = vphi;
-   x_init[3] = XiF;
-   x_init[4] = LXiF;
+
+   const auto QS = LOCALINPUT(QS);
+   const auto s = LOCALINPUT(ssumInput);
+   const auto sgnLambdax = Sign(LOCALINPUT(SignLambdax));
+
+   x_init[0] = AbsSqrt((ms2 + 0.0125*Sqr(g1p)*Sqr(QS)*Sqr(s)) 
+                       / (msbar2 + 0.0125*Sqr(g1p)*Sqr(QS)*Sqr(s)));
+
+   const double cth = 1. / Sqrt(1. + Sqr(x_init[0]));
+   const double sth = cth*x_init[0];
+   const double cth2 = Sqr(cth);
+   const double sth2 = Sqr(sth);
+   const double c2th = cth2 - sth2;
+
+   x_init[1] = sgnLambdax*AbsSqrt(2.0*(mHu2*Sqr(vu) - mHd2*Sqr(vd) + 0.125*Sqr(g2)*Power(vu,4)
+                                        + 0.075*Sqr(g1)*Power(vu,4) - 0.125*Sqr(g2)*Power(vd,4)
+                                        - 0.075*Sqr(g1)*Power(vd,4) + 0.0125*Sqr(g1p)*
+                                        (3.0*Sqr(vd) - 2.0*Sqr(vu))*
+                                        (-3.0*Sqr(vd) - 2.0*Sqr(vu) + QS*Sqr(s)*cth2
+                                         - QS*Sqr(s)*sth2)) / (Sqr(s)*cth2*(Sqr(vd) - Sqr(vu))));
+   
+   double lam = x_init[1];
+
+   x_init[2] = (-4. / (s*sth*vu*lam*Conj(Sigmax) + s*sth*vu*Sigmax*Conj(lam)))*
+      (mHd2*vd - 0.35355339059327373*s*cth*vu*TLambdax
+       - 0.35355339059327373*s*cth*vu*Conj(TLambdax) + 0.5*AbsSqr(lam)*vd*
+       (Sqr(vu) + Sqr(s*cth)) + 0.125*Sqr(g2)*Power(vd,3) + 0.075*Sqr(g1)*Power(vd,3)
+       - 0.125*Sqr(g2)*vd*Sqr(vu) - 0.075*Sqr(g1)*vd*Sqr(vu) + 0.1125*Sqr(g1p)*
+       Power(vd,3) + 0.075*Sqr(g1p)*vd*Sqr(vu) - 0.0375*Sqr(g1p)*QS*vd*Sqr(s)*c2th);
+
+   double phi = x_init[2];
+
+   x_init[3] = ( 2. / (s*cth*Sigmax + s*cth*Conj(Sigmax)))*
+      (msbar2*s*sth - 0.35355339059327373*phi*s*cth*MuPhi*Conj(Sigmax)
+       - 0.35355339059327373*phi*s*cth*Sigmax*Conj(MuPhi) - 0.35355339059327373*phi*
+       s*cth*TSigmax - 0.35355339059327373*phi*s*cth*Conj(TSigmax) + 0.25*phi*vd*vu*
+       lam*Conj(Sigmax) + 0.25*phi*vd*vu*Sigmax*Conj(lam) 
+       + 0.5*AbsSqr(Sigmax)*s*sth*Sqr(phi) + 0.5*AbsSqr(Sigmax)*s*sth*Sqr(s*cth) - 0.25*s*cth
+       *Sqr(phi)*KappaPr*Conj(Sigmax) - 0.25*s*cth*Sqr(phi)*Sigmax*Conj(KappaPr)
+       + 0.0375*Sqr(g1p)*QS*s*sth*Sqr(vd) + 0.025*Sqr(g1p)*QS*s*sth*Sqr(vu) - 0.0125*
+       Sqr(g1p)*Sqr(QS)*s*sth*Sqr(s*cth) + 0.0125*Sqr(g1p)*Sqr(QS)*Power(s*sth,3));
+
+   double xi = x_init[3];
+
+   x_init[4] = -0.7071067811865475*
+      (mphi2*phi + phi*AbsSqr(MuPhi) + Power(phi,3)*AbsSqr(
+         KappaPr) + 0.5*phi*BMuPhi + 0.5*phi*Conj(BMuPhi) + 0.7071067811865475*
+       MuPhi*Conj(xi) - 0.35355339059327373*MuPhi*Sqr(s)*cth*sth*Conj(Sigmax) 
+       - 0.35355339059327373*Sqr(s)*cth*sth*Conj(TSigmax) +
+       phi*Conj(xi)*KappaPr - 0.5*phi*Sqr(s)*cth*sth*Conj(Sigmax)*KappaPr + 0.25*vd*s*sth*
+       vu*Conj(Sigmax)*lam + 0.7071067811865475*Conj(MuPhi)*xi + phi*Conj(
+          KappaPr)*xi - 0.35355339059327373*Sqr(s)*cth*sth*Conj(MuPhi)*Sigmax - 0.5*phi*Sqr(s)*
+       cth*sth*Conj(KappaPr)*Sigmax + 0.25*vd*s*sth*vu*Conj(lam)*Sigmax
+       + 1.0606601717798212*MuPhi*Conj(KappaPr)*Sqr(phi) +
+       0.35355339059327373*Conj(TKappaPr)*Sqr(phi) + 1.0606601717798212*Conj(
+          MuPhi)*KappaPr*Sqr(phi) + 0.5*phi*AbsSqr(Sigmax)*Sqr(s*cth) + 0.5*phi*AbsSqr
+       (Sigmax)*Sqr(s*sth) + 0.35355339059327373*Sqr(phi)*TKappaPr -
+       0.35355339059327373*Sqr(s)*cth*sth*TSigmax);
 
 }
 
@@ -512,7 +576,7 @@ void CLASSNAME::ewsb_initial_guess(double x_init[number_of_ewsb_equations])
  * GSL_EDOM otherwise.
  */
 int CLASSNAME::ewsb_step(double ewsb_parameters[number_of_ewsb_equations]) const
-{
+{ // TODO
    int error;
    double tadpole[number_of_ewsb_equations] = { 0. };
 
@@ -533,16 +597,58 @@ int CLASSNAME::ewsb_step(double ewsb_parameters[number_of_ewsb_equations]) const
       }
    }
 
+   double TanTheta_new;
+   double Lambdax_new;
+   double vphi_new;
+   double XiF_new;
+   double LXiF_new;
+
+   const double s = LOCALINPUT(ssumInput);
+   const double QS = LOCALINPUT(QS);
+
+   const double delta = 0.5*AbsSqr(Lambdax)*Sqr(vs)*(Sqr(vd) + Sqr(vu))
+      + 0.5*AbsSqr(Sigmax)*Sqr(vs)*Sqr(vphi) - 0.5*AbsSqr(Sigmax)*Sqr(vsb)*Sqr(vphi)
+      - 0.35355339059327373*vd*vu*vs*TLambdax - 0.35355339059327373*vd*vu*vs*Conj(TLambdax) 
+      - 0.25*vphi*vsb*vd*vu*Lambdax*Conj(Sigmax) - 0.25*vphi*vsb*vd*vu*Sigmax*Conj(Lambdax)
+      - 0.0375*QS*Sqr(g1p)*Sqr(s)*Sqr(vd) - 0.025*QS*Sqr(g1p)*Sqr(s)*Sqr(vu) - vs * tadpole[2] + vsb * tadpole[3];
+
+   TanTheta_new = AbsSqrt((ms2 + 0.0125*Sqr(g1p)*Sqr(QS)*Sqr(s) + delta/(Sqr(vs)))
+                          / (msbar2 + 0.0125*Sqr(g1p)*Sqr(QS)*Sqr(s)));
+
+   const double vs_new = s * Cos(ArcTan(TanTheta_new));
+   const double vsb_new = s * Sin(ArcTan(TanTheta_new));
+
+   double result = mHd2*Sqr(vd) - mHu2*Sqr(vu) + 0.125*Sqr(g2)*Power(vd,4)
+      + 0.075*Sqr(g1)*Power(vd,4) - 0.125*Sqr(g2)*Power(vu,4) - 0.075*Sqr(g1)*
+      Power(vu,4) + 0.1125*Sqr(g1p)*Power(vd,4) - 0.05*Sqr(g1p)*Power(vu,4)
+      - 0.0375*QS*Sqr(g1p)*Sqr(vd)*Sqr(vs) + 0.0375*QS*Sqr(g1p)*Sqr(vd)*Sqr(vsb)
+      + 0.025*QS*Sqr(g1p)*Sqr(vu)*Sqr(vs) - 0.025*QS*Sqr(g1p)*Sqr(vu)*Sqr(vsb);
+   
+   if (ewsb_loop_order > 0) {
+      // DH:: should have error checking here
+      result -= (vd*Re(tadpole_hh(0)) - vu*Re(tadpole_hh(1)));
+      if (ewsb_loop_order > 1) {
+         double two_loop_tadpole[3];
+         tadpole_hh_2loop(two_loop_tadpole);
+         result -= (vd*two_loop_tadpole[0] - vu*two_loop_tadpole[1]);
+      }
+   }
+
+   result *= (2. / (Sqr(vs)*(Sqr(vu) - Sqr(vd))));
+
+   // DH:: should also check that Lambdax^2 > 0 here
+
+
    const bool is_finite = false;
 
 
    if (is_finite) {
       error = GSL_SUCCESS;
-      ewsb_parameters[0] = vs;
-      ewsb_parameters[1] = Lambdax;
-      ewsb_parameters[2] = vphi;
-      ewsb_parameters[3] = XiF;
-      ewsb_parameters[4] = LXiF;
+      ewsb_parameters[0] = TanTheta_new;
+      ewsb_parameters[1] = Lambdax_new;
+      ewsb_parameters[2] = vphi_new;
+      ewsb_parameters[3] = XiF_new;
+      ewsb_parameters[4] = LXiF_new;
 
    } else {
       error = GSL_EDOM;
@@ -573,13 +679,17 @@ int CLASSNAME::ewsb_step(const gsl_vector* x, void* params, gsl_vector* f)
    CNE6SSM* model = ewsb_args->model;
    const unsigned ewsb_loop_order = ewsb_args->ewsb_loop_order;
 
-   const double vs = gsl_vector_get(x, 0);
+   const double s = INPUT(ssumInput);
+   
+   const double vs = s * Cos(ArcTan(gsl_vector_get(x, 0)));
+   const double vsb = s * Sin(ArcTan(gsl_vector_get(x, 0)));
    const double Lambdax = gsl_vector_get(x, 1);
    const double vphi = gsl_vector_get(x, 2);
    const double XiF = gsl_vector_get(x, 3);
    const double LXiF = gsl_vector_get(x, 4);
 
    model->set_vs(vs);
+   model->set_vsb(vsb);
    model->set_Lambdax(Lambdax);
    model->set_vphi(vphi);
    model->set_XiF(XiF);
@@ -590,7 +700,7 @@ int CLASSNAME::ewsb_step(const gsl_vector* x, void* params, gsl_vector* f)
       model->calculate_DRbar_masses();
 
    double ewsb_parameters[number_of_ewsb_equations] =
-      { vs, Lambdax, vphi, XiF, LXiF };
+      { vs / vs, Lambdax, vphi, XiF, LXiF };
 
    const int status = model->ewsb_step(ewsb_parameters);
 
@@ -993,7 +1103,7 @@ void CLASSNAME::calculate_spectrum()
    else
       reorder_pole_masses();
 
-   if (problems.have_problem() && !force_output) {
+   if (problems.have_problem()) {
       clear_DRbar_parameters();
       physical.clear();
    }
@@ -53872,7 +53982,7 @@ void CLASSNAME::calculate_MChaP_pole()
 
 void CLASSNAME::calculate_MVZ_pole()
 {
-   if (!force_output && problems.is_tachyon(VZ))
+   if (problems.is_tachyon(VZ))
       return;
 
    // diagonalization with medium precision
@@ -53888,7 +53998,7 @@ void CLASSNAME::calculate_MVZ_pole()
 
 void CLASSNAME::calculate_MVZp_pole()
 {
-   if (!force_output && problems.is_tachyon(VZp))
+   if (problems.is_tachyon(VZp))
       return;
 
    // diagonalization with medium precision
@@ -53904,7 +54014,7 @@ void CLASSNAME::calculate_MVZp_pole()
 
 void CLASSNAME::calculate_MSd_pole()
 {
-   if (!force_output && problems.is_tachyon(Sd))
+   if (problems.is_tachyon(Sd))
       return;
 
    // diagonalization with medium precision
@@ -53944,7 +54054,7 @@ void CLASSNAME::calculate_MSd_pole()
 
 void CLASSNAME::calculate_MSv_pole()
 {
-   if (!force_output && problems.is_tachyon(Sv))
+   if (problems.is_tachyon(Sv))
       return;
 
    // diagonalization with medium precision
@@ -53984,7 +54094,7 @@ void CLASSNAME::calculate_MSv_pole()
 
 void CLASSNAME::calculate_MSu_pole()
 {
-   if (!force_output && problems.is_tachyon(Su))
+   if (problems.is_tachyon(Su))
       return;
 
    // diagonalization with medium precision
@@ -54024,7 +54134,7 @@ void CLASSNAME::calculate_MSu_pole()
 
 void CLASSNAME::calculate_MSe_pole()
 {
-   if (!force_output && problems.is_tachyon(Se))
+   if (problems.is_tachyon(Se))
       return;
 
    // diagonalization with medium precision
@@ -54064,7 +54174,7 @@ void CLASSNAME::calculate_MSe_pole()
 
 void CLASSNAME::calculate_MSDX_pole()
 {
-   if (!force_output && problems.is_tachyon(SDX))
+   if (problems.is_tachyon(SDX))
       return;
 
    // diagonalization with medium precision
@@ -54104,7 +54214,7 @@ void CLASSNAME::calculate_MSDX_pole()
 
 void CLASSNAME::calculate_Mhh_pole()
 {
-   if (!force_output && problems.is_tachyon(hh))
+   if (problems.is_tachyon(hh))
       return;
 
    // diagonalization with high precision
@@ -54116,6 +54226,11 @@ void CLASSNAME::calculate_Mhh_pole()
       Eigen::Matrix<double,5,5> self_energy;
       const Eigen::Matrix<double,5,5> M_tree(get_mass_matrix_hh());
 
+      // two-loop Higgs self-energy contributions
+      double two_loop[6] = { 0. };
+      if (pole_mass_loop_order > 1)
+         self_energy_hh_2loop(two_loop);
+
       for (unsigned es = 0; es < 5; ++es) {
          const double p = Abs(old_Mhh(es));
          for (unsigned i1 = 0; i1 < 5; ++i1) {
@@ -54123,6 +54238,15 @@ void CLASSNAME::calculate_Mhh_pole()
                self_energy(i1,i2) = Re(self_energy_hh(p,i1,i2
                   ));
             }
+         }
+
+         if (pole_mass_loop_order > 1) {
+            self_energy(0, 0) += two_loop[0];
+            self_energy(0, 1) += two_loop[1];
+            self_energy(0, 2) += two_loop[2];
+            self_energy(1, 1) += two_loop[3];
+            self_energy(1, 2) += two_loop[4];
+            self_energy(2, 2) += two_loop[5];
          }
 
          Symmetrize(self_energy);
@@ -54159,7 +54283,7 @@ void CLASSNAME::calculate_Mhh_pole()
 
 void CLASSNAME::calculate_MAh_pole()
 {
-   if (!force_output && problems.is_tachyon(Ah))
+   if (problems.is_tachyon(Ah))
       return;
 
    // diagonalization with high precision
@@ -54171,6 +54295,11 @@ void CLASSNAME::calculate_MAh_pole()
       Eigen::Matrix<double,5,5> self_energy;
       const Eigen::Matrix<double,5,5> M_tree(get_mass_matrix_Ah());
 
+      // two-loop Higgs self-energy contributions
+      double two_loop[6] = { 0. };
+      if (pole_mass_loop_order > 1)
+         self_energy_Ah_2loop(two_loop);
+
       for (unsigned es = 0; es < 5; ++es) {
          const double p = Abs(old_MAh(es));
          for (unsigned i1 = 0; i1 < 5; ++i1) {
@@ -54178,6 +54307,15 @@ void CLASSNAME::calculate_MAh_pole()
                self_energy(i1,i2) = Re(self_energy_Ah(p,i1,i2
                   ));
             }
+         }
+
+         if (pole_mass_loop_order > 1) {
+            self_energy(0, 0) += two_loop[0];
+            self_energy(0, 1) += two_loop[1];
+            self_energy(0, 2) += two_loop[2];
+            self_energy(1, 1) += two_loop[3];
+            self_energy(1, 2) += two_loop[4];
+            self_energy(2, 2) += two_loop[5];
          }
 
          Symmetrize(self_energy);
@@ -54214,7 +54352,7 @@ void CLASSNAME::calculate_MAh_pole()
 
 void CLASSNAME::calculate_MHpm_pole()
 {
-   if (!force_output && problems.is_tachyon(Hpm))
+   if (problems.is_tachyon(Hpm))
       return;
 
    // diagonalization with high precision
@@ -54518,7 +54656,7 @@ void CLASSNAME::calculate_MFDX_pole()
 
 void CLASSNAME::calculate_MSHI0_pole()
 {
-   if (!force_output && problems.is_tachyon(SHI0))
+   if (problems.is_tachyon(SHI0))
       return;
 
    // diagonalization with medium precision
@@ -54558,7 +54696,7 @@ void CLASSNAME::calculate_MSHI0_pole()
 
 void CLASSNAME::calculate_MSHIPM_pole()
 {
-   if (!force_output && problems.is_tachyon(SHIPM))
+   if (problems.is_tachyon(SHIPM))
       return;
 
    // diagonalization with medium precision
@@ -54681,7 +54819,7 @@ void CLASSNAME::calculate_MChiI_pole()
 
 void CLASSNAME::calculate_MSHp0_pole()
 {
-   if (!force_output && problems.is_tachyon(SHp0))
+   if (problems.is_tachyon(SHp0))
       return;
 
    // diagonalization with medium precision
@@ -54721,7 +54859,7 @@ void CLASSNAME::calculate_MSHp0_pole()
 
 void CLASSNAME::calculate_MSHpp_pole()
 {
-   if (!force_output && problems.is_tachyon(SHpp))
+   if (problems.is_tachyon(SHpp))
       return;
 
    // diagonalization with medium precision
@@ -54823,8 +54961,8 @@ void CLASSNAME::calculate_MSu_3rd_generation(double& msf1, double& msf2, double&
    sf_data.T3    = sfermions::Isospin[sfermions::up];
    sf_data.Yl    = sfermions::Hypercharge_left[sfermions::up];
    sf_data.Yr    = sfermions::Hypercharge_right[sfermions::up];
-   sf_data.Ql    = sfermions::Ncharge_left[sfermions::up];
-   sf_data.Qr    = sfermions::Ncharge_right[sfermions::up];
+   sf_data.Ql    = sfermions::U1prime_charge_left[sfermions::up];
+   sf_data.Qr    = sfermions::U1prime_charge_right[sfermions::up];
 
    Eigen::Array<double,2,1> msf;
 
@@ -54857,8 +54995,8 @@ void CLASSNAME::calculate_MSd_3rd_generation(double& msf1, double& msf2, double&
    sf_data.T3    = sfermions::Isospin[sfermions::down];
    sf_data.Yl    = sfermions::Hypercharge_left[sfermions::down];
    sf_data.Yr    = sfermions::Hypercharge_right[sfermions::down];
-   sf_data.Ql    = sfermions::Ncharge_left[sfermions::down];
-   sf_data.Qr    = sfermions::Ncharge_right[sfermions::down];
+   sf_data.Ql    = sfermions::U1prime_charge_left[sfermions::down];
+   sf_data.Qr    = sfermions::U1prime_charge_right[sfermions::down];
 
    Eigen::Array<double,2,1> msf;
 
@@ -54891,8 +55029,8 @@ void CLASSNAME::calculate_MSv_3rd_generation(double& msf1, double& msf2, double&
    sf_data.T3    = sfermions::Isospin[sfermions::neutrino];
    sf_data.Yl    = sfermions::Hypercharge_left[sfermions::neutrino];
    sf_data.Yr    = sfermions::Hypercharge_right[sfermions::neutrino];
-   sf_data.Ql    = sfermions::Ncharge_left[sfermions::neutrino];
-   sf_data.Qr    = sfermions::Ncharge_right[sfermions::neutrino];
+   sf_data.Ql    = sfermions::U1prime_charge_left[sfermions::neutrino];
+   sf_data.Qr    = sfermions::U1prime_charge_right[sfermions::neutrino];
 
    Eigen::Array<double,2,1> msf;
 
@@ -54925,8 +55063,8 @@ void CLASSNAME::calculate_MSe_3rd_generation(double& msf1, double& msf2, double&
    sf_data.T3    = sfermions::Isospin[sfermions::electron];
    sf_data.Yl    = sfermions::Hypercharge_left[sfermions::electron];
    sf_data.Yr    = sfermions::Hypercharge_right[sfermions::electron];
-   sf_data.Ql    = sfermions::Ncharge_left[sfermions::electron];
-   sf_data.Qr    = sfermions::Ncharge_right[sfermions::electron];
+   sf_data.Ql    = sfermions::U1prime_charge_left[sfermions::electron];
+   sf_data.Qr    = sfermions::U1prime_charge_right[sfermions::electron];
 
    Eigen::Array<double,2,1> msf;
 
@@ -54967,7 +55105,7 @@ void CLASSNAME::self_energy_hh_2loop(double result[6]) const
    const double tanb2 = Sqr(tanb);
    const double sinb = tanb / Sqrt(1. + tanb2);
    const double cosb = 1. / Sqrt(1. + tanb2);
-   double amu = -0.7071067811865475*vS*Lambdax;
+   double amu = -0.7071067811865475*vs*Lambdax;
    double mg = MGlu;
    double mAsq = Sqr(MAh(1));
    double cotb = 1.0 / tanb;
@@ -54978,7 +55116,7 @@ void CLASSNAME::self_energy_hh_2loop(double result[6]) const
    double lamS = Lambdax;
    static const double root2 = Sqrt(2.0);
    double vevS =  vev / root2;
-   double svevS = vS / root2;
+   double svevS = vs / root2;
    int loop = 2;
    int scheme = 0; // selects DR-bar scheme
 
@@ -55048,7 +55186,7 @@ void CLASSNAME::self_energy_hh_2loop(double result[6]) const
    DMS[0][0] += s11w + s11tau + dMA * Sqr(sinb) - tadpole[0] / vd;
    DMS[0][1] += s12w + s12tau - dMA * sinb * cosb;
    DMS[1][1] += s22w + s22tau + dMA * Sqr(cosb) - tadpole[1] / vu;
-   DMS[2][2] += - tadpole[2] / vS;
+   DMS[2][2] += - tadpole[2] / vs;
 
    result[0] = - DMS[0][0]; // 1,1 element
    result[1] = - DMS[0][1]; // 1,2 element
@@ -55093,7 +55231,7 @@ void CLASSNAME::self_energy_Ah_2loop(double result[6]) const
    const double cosb = 1. / Sqrt(1. + tanb2);
    const double sinb2 = Sqr(sinb);
    const double cosb2 = Sqr(cosb);
-   double amu = -0.7071067811865475*vS*Lambdax;
+   double amu = -0.7071067811865475*vs*Lambdax;
    double mg = MGlu;
    double mAsq = Sqr(MAh(1));
    double cotb = 1.0 / tanb;
@@ -55104,7 +55242,7 @@ void CLASSNAME::self_energy_Ah_2loop(double result[6]) const
    double lamS = Lambdax;
    static const double root2 = Sqrt(2.0);
    double vevS =  vev / root2;
-   double svevS = vS / root2;
+   double svevS = vs / root2;
    int loop = 2;
 
    double p2w = 0., p2tau = 0.;
@@ -55166,7 +55304,7 @@ void CLASSNAME::self_energy_Ah_2loop(double result[6]) const
 
    DMP[0][0] += - tadpole[0] / vd;
    DMP[1][1] += - tadpole[1] / vu;
-   DMP[2][2] += - tadpole[2] / vS;
+   DMP[2][2] += - tadpole[2] / vs;
 
    result[0] = - DMP[0][0]; // 1,1 element
    result[1] = - DMP[0][1]; // 1,2 element
@@ -55207,7 +55345,7 @@ void CLASSNAME::tadpole_hh_2loop(double result[3]) const
    const double tanb2 = Sqr(tanb);
    const double sinb = tanb / Sqrt(1. + tanb2);
    const double cosb = 1. / Sqrt(1. + tanb2);
-   double amu = -0.7071067811865475*vS*Lambdax;
+   double amu = -0.7071067811865475*vs*Lambdax;
    double mg = MGlu;
    double mAsq = Sqr(MAh(1));
    double cotbeta = 1.0 / tanb;
@@ -55246,14 +55384,14 @@ void CLASSNAME::tadpole_hh_2loop(double result[3]) const
    UNLOCK_MUTEX();
 
    // rescale T1 to get TS
-   const double sss = s1s * vev * cosb / vS;
-   const double ssb = s1b * vev * sinb / vS;
+   const double sss = s1s * vev * cosb / vs;
+   const double ssb = s1b * vev * sinb / vs;
 
    if (!std::isnan(s1s * s1t * s1b * s1tau * s2s * s2t * s2b * s2tau
                    * sss * ssb)) {
       result[0] = (- s1s - s1t - s1b - s1tau) * vd;
       result[1] = (- s2s - s2t - s2b - s2tau) * vu;
-      result[2] = (- sss - ssb) * vS;
+      result[2] = (- sss - ssb) * vs;
    } else {
       result[0] = 0.;
       result[1] = 0.;
@@ -55276,7 +55414,7 @@ void CLASSNAME::calculate_MVP_pole()
 
 void CLASSNAME::calculate_MVWm_pole()
 {
-   if (!force_output && problems.is_tachyon(VWm))
+   if (problems.is_tachyon(VWm))
       return;
 
    // diagonalization with medium precision
