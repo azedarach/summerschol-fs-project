@@ -700,7 +700,7 @@ int CLASSNAME::ewsb_step(const gsl_vector* x, void* params, gsl_vector* f)
       model->calculate_DRbar_masses();
 
    double ewsb_parameters[number_of_ewsb_equations] =
-      { vs / vs, Lambdax, vphi, XiF, LXiF };
+      { vsb / vs, Lambdax, vphi, XiF, LXiF };
 
    const int status = model->ewsb_step(ewsb_parameters);
 
