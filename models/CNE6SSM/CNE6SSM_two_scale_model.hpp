@@ -1312,7 +1312,6 @@ public:
    double v() const;
    double ThetaWp() const;
 
-
 private:
    struct EWSB_args {
       CNE6SSM<Two_scale>* model;
@@ -1356,9 +1355,10 @@ private:
    int solve_ewsb_iteratively();
    int solve_ewsb_iteratively(unsigned);
    int solve_ewsb_iteratively_with(EWSB_solver*, const double[number_of_ewsb_equations]);
+   int check_ewsb_solution(double);
    int solve_ewsb_tree_level_via_soft_higgs_masses();
    void ewsb_initial_guess(double[number_of_ewsb_equations]);
-   int ewsb_step(double[number_of_ewsb_equations]) const;
+   int ewsb_step(double[number_of_ewsb_equations]);
    static int ewsb_step(const gsl_vector*, void*, gsl_vector*);
    void tadpole_equations(double[number_of_ewsb_equations]) const;
    static int tadpole_equations(const gsl_vector*, void*, gsl_vector*);

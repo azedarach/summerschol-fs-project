@@ -118,6 +118,25 @@ public:
 };
 
 /**
+ * @class DivideByZeroError
+ * @brief Attempted to divide by zero
+ */
+class DivideByZeroError : public Error {
+public:
+   explicit DivideByZeroError(std::string msg_)
+      : msg(msg_)
+      {}
+   virtual ~DivideByZeroError() {}
+   virtual std::string what() const {
+      std::stringstream message;
+      message << "DivideByZeroError: attempted to divide by zero: " << msg;
+      return message.str();
+   }
+   private:
+   std::string msg;
+};
+
+/**
  * @class UnknownModelParameterError
  * @brief Unknown model parameter
  */
