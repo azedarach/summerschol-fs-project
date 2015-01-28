@@ -162,6 +162,15 @@ public:
    void set_PhaseFHpup(const std::complex<double>& PhaseFHpup_) { PhaseFHpup = PhaseFHpup_; }
    const std::complex<double>& get_PhaseFHpup() const { return PhaseFHpup; }
 
+   // calculate coefficients in expansion of low energy parameters
+   Eigen::Array<double,2,1> get_soft_gaugino_mass_coeffs(CE6SSM_info::Parameters, double, double) const;
+   Eigen::Array<double,4,1> get_soft_scalar_mass_coeffs(CE6SSM_info::Parameters, double, double) const;
+   Eigen::Array<double,2,1> get_soft_trilinear_coeffs(CE6SSM_info::Parameters, double, double) const;
+
+   double get_soft_mass_squared(const CE6SSM_soft_parameters&, CE6SSM_info::Parameters) const;
+   double get_soft_trilinear(const CE6SSM_soft_parameters&, CE6SSM_info::Parameters) const;
+   void set_pars_at_high_scale(CE6SSM_soft_parameters &, double, double, double) const;
+
    void calculate_MVG();
    void calculate_MGlu();
    void calculate_MFv();

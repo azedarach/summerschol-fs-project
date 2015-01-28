@@ -2132,9 +2132,9 @@ Eigen::Array<double,2,1> CLASSNAME::get_soft_trilinear_coeffs(CMSSM_info::Parame
 
 void CLASSNAME::set_pars_at_high_scale(CMSSM_soft_parameters & model, double m0, double m12, double Azero) const
 {
-   model.set_TYe(Azero*Ye);
-   model.set_TYd(Azero*Yd);
-   model.set_TYu(Azero*Yu);
+   model.set_TYe(Azero*model.get_Ye());
+   model.set_TYd(Azero*model.get_Yd());
+   model.set_TYu(Azero*model.get_Yu());
    model.set_mHd2(Sqr(m0));
    model.set_mHu2(Sqr(m0));
    model.set_mq2(Sqr(m0)*UNITMATRIX(3));
