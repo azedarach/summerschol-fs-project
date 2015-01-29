@@ -1556,7 +1556,7 @@ Eigen::Array<double,4,1> CLASSNAME::get_soft_scalar_mass_coeffs(CNE6SSM_info::Pa
    double Azero_pt4 = Azero;
 
    if (is_zero(Abs(m12_pt4))) {
-      m12_pt2 = 1.0;
+      m12_pt4 = 1.0;
    } 
 
    if (is_zero(Abs(Azero_pt4))) {

@@ -1294,7 +1294,7 @@ Eigen::Array<double,4,1> CLASSNAME::get_soft_scalar_mass_coeffs(CE6SSM_info::Par
    double Azero_pt4 = Azero;
 
    if (is_zero(Abs(m12_pt4))) {
-      m12_pt2 = 1.0;
+      m12_pt4 = 1.0;
    } 
 
    if (is_zero(Abs(Azero_pt4))) {
@@ -2070,6 +2070,9 @@ void CLASSNAME::set_pars_at_high_scale(CE6SSM_soft_parameters & model, double m0
    model.set_msI2(Sqr(m0)*UNITMATRIX(2));
    model.set_mHp2(Sqr(m0));
    model.set_mHpbar2(Sqr(m0));
+   model.set_mHd2(Sqr(m0));
+   model.set_mHu2(Sqr(m0));
+   model.set_ms2(Sqr(m0));
    model.set_TKappa(Azero*model.get_Kappa());
    model.set_TLambda12(Azero*model.get_Lambda12());
    model.set_TLambdax(Azero*model.get_Lambdax());
